@@ -1,0 +1,139 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Crown,
+  FileText,
+  Gauge,
+  LogOut,
+  Medal,
+  Settings,
+  UserCircle2,
+  ClipboardCheck,
+  Trophy,
+  X,
+  GraduationCap,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+type DashboardSidebarProps = {
+  mobileOpen: boolean;
+  onClose: () => void;
+};
+
+const menuItems = [
+  { label: 'Tableau de bord', href: '/dashboard', icon: Gauge },
+  { label: 'Anciens examens', href: '/dashboard/exams', icon: FileText },
+  { label: 'Quiz', href: '/dashboard/quiz', icon: ClipboardCheck },
+  { label: 'Simulations', href: '/dashboard', icon: Trophy },
+  { label: 'Classement', href: '/dashboard', icon: Medal },
+  { label: 'Téléchargements', href: '/dashboard/exams', icon: FileText },
+  { label: 'Profil', href: '/dashboard/profile', icon: UserCircle2 },
+  { label: 'Paramètres', href: '/dashboard/profile', icon: Settings },
+];
+
+function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="rounded-lg bg-exevo-orange p-2 text-white shadow-lg shadow-orange-500/30">
+            <GraduationCap className="h-5 w-5" />
+          </div>
+          <span className="text-xl font-black text-exevo-blue dark:text-white">Exevo</span>
+        </Link>
+      </div>
+
+      <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-11 w-11 border border-slate-200 dark:border-slate-700">
+            <AvatarFallback className="bg-exevo-blue text-white">GM</AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm font-bold">Grâce Mbayo</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Option Scientifique</p>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          const active = pathname === item.href;
+
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={onItemClick}
+              className={cn(
+                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
+                active
+                  ? 'bg-exevo-blue text-white shadow-lg shadow-slate-400/20'
+                  : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
+        <Button className="w-full bg-exevo-orange text-white hover:bg-exevo-light-orange">
+          <Crown className="mr-2 h-4 w-4" />
+          Passer Premium
+        </Button>
+        <Button variant="outline" className="w-full justify-start">
+          <LogOut className="mr-2 h-4 w-4" />
+          Déconnexion
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function DashboardSidebar({ mobileOpen, onClose }: DashboardSidebarProps) {
+  return (
+    <>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-slate-200 bg-white lg:block dark:border-slate-800 dark:bg-slate-900">
+        <SidebarContent />
+      </aside>
+
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/50 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+            />
+            <motion.aside
+              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 lg:hidden"
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+            >
+              <div className="flex items-center justify-end p-3">
+                <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer le menu">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <SidebarContent onItemClick={onClose} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
