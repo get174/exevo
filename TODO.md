@@ -5,6 +5,11 @@ Créer une landing page professionnelle pour Exevo, une plateforme éducative de
 
 ## 📋 Plan de Développement
 
+## 🔧 Build Fix (Dashboard page data)
+- [x] A. Identifier la cause du build error `/dashboard`
+- [x] B. Corriger la syntaxe dans `components/ui/chart.tsx`
+- [ ] C. Lancer `npm run build` pour validation
+
 ## 🔄 Mise à jour demandée (RDC Flag Theme)
 - [ ] A. Adapter toute la charte visuelle aux couleurs du drapeau RDC
 - [ ] B. Mettre à jour `globals.css` et `tailwind.config.ts`

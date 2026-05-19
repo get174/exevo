@@ -3,14 +3,49 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setGlobalError(null);
+
+    if (!isSupabaseConfigured() || !supabase) {
+      setGlobalError(
+        'Configuration Supabase manquante. Ajoute NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY.'
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      setGlobalError(error.message);
+      return;
+    }
+
+    router.push('/dashboard');
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-orange-50 px-4 py-10 dark:from-slate-950 dark:to-slate-900">
@@ -26,10 +61,17 @@ export default function LoginPage() {
             <CardDescription>Accède à ton espace Exevo</CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={onSubmit}>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="exemple@email.com" required />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="exemple@email.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
@@ -40,6 +82,8 @@ export default function LoginPage() {
                     placeholder="********"
                     required
                     className="pr-10"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
                   <button
                     type="button"
@@ -51,9 +95,19 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-exevo-orange text-white hover:bg-exevo-light-orange">
+              {globalError && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {globalError}
+                </p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-exevo-orange text-white hover:bg-exevo-light-orange"
+              >
                 <LogIn className="mr-2 h-4 w-4" />
-                Connexion
+                {isSubmitting ? 'Connexion...' : 'Connexion'}
               </Button>
             </form>
             <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-300">
