@@ -131,6 +131,88 @@ USING (
 );
 
 -- =====================================================
+-- TABLE: exams
+-- Stores ancient Exetat exams for revision
+-- =====================================================
+CREATE TABLE IF NOT EXISTS exams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    option TEXT NOT NULL,
+    difficulty TEXT CHECK (difficulty IN ('Facile', 'Moyen', 'Difficile')) NOT NULL,
+    description TEXT,
+    pdf_url TEXT NOT NULL,
+    thumbnail_url TEXT,
+    downloads_count INTEGER DEFAULT 0,
+    is_favorite BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- TABLE: exam_favorites
+-- Stores user favorites for exams
+-- =====================================================
+CREATE TABLE IF NOT EXISTS exam_favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, exam_id)
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_exams_subject ON exams(subject);
+CREATE INDEX IF NOT EXISTS idx_exams_year ON exams(year);
+CREATE INDEX IF NOT EXISTS idx_exams_option ON exams(option);
+CREATE INDEX IF NOT EXISTS idx_exam_favorites_user ON exam_favorites(user_id);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE exam_favorites ENABLE ROW LEVEL SECURITY;
+
+-- Exams are publicly readable
+CREATE POLICY "Exams are publicly readable" 
+ON exams FOR SELECT 
+USING (true);
+
+-- Admins can manage exams
+CREATE POLICY "Admins can manage exams" 
+ON exams FOR ALL 
+USING (
+    EXISTS (
+        SELECT 1 FROM auth.users 
+        WHERE auth.users.id = auth.uid()
+        AND raw_user_meta_data->>'role' = 'admin'
+    )
+);
+
+-- Users can manage their favorites
+CREATE POLICY "Users can manage own favorites" 
+ON exam_favorites FOR ALL 
+USING (auth.uid() = user_id);
+
+-- =====================================================
+-- SEED DATA: Sample Exams
+-- =====================================================
+INSERT INTO exams (title, subject, year, option, difficulty, description, pdf_url, downloads_count) VALUES
+('Examen Exetat Mathématiques 2023', 'Mathématiques', 2023, 'Scientifique', 'Difficile', 'Session ordinaire 2023 - Option Scientifique', 'https://example.com/exams/exetat-math-2023.pdf', 1250),
+('Examen Exetat Physique 2023', 'Physique', 2023, 'Scientifique', 'Moyen', 'Session ordinaire 2023 - Option Scientifique', 'https://example.com/exams/exetat-phys-2023.pdf', 890),
+('Examen Exetat Chimie 2022', 'Chimie', 2022, 'Scientifique', 'Difficile', 'Session ordinaire 2022 - Option Scientifique', 'https://example.com/exams/exetat-chim-2022.pdf', 756),
+('Examen Exetat Français 2023', 'Français', 2023, 'Littéraire', 'Facile', 'Session ordinaire 2023 - Option Littéraire', 'https://example.com/exams/exetat-fr-2023.pdf', 1100),
+('Examen Exetat Biologie 2022', 'Biologie', 2022, 'Scientifique', 'Moyen', 'Session ordinaire 2022 - Option Scientifique', 'https://example.com/exams/exetat-bio-2022.pdf', 650),
+('Examen Exetat Géographie 2023', 'Géographie', 2023, 'Littéraire', 'Facile', 'Session ordinaire 2023 - Option Littéraire', 'https://example.com/exams/exetat-geo-2023.pdf', 420),
+('Examen Exetat Mathématiques 2022', 'Mathématiques', 2022, 'Scientifique', 'Difficile', 'Session ordinaire 2022 - Option Scientifique', 'https://example.com/exams/exetat-math-2022.pdf', 980),
+('Examen Exetat Physique 2021', 'Physique', 2021, 'Scientifique', 'Moyen', 'Session ordinaire 2021 - Option Scientifique', 'https://example.com/exams/exetat-phys-2021.pdf', 720),
+('Examen Exetat Commerciale 2023', 'Français', 2023, 'Commerciale', 'Facile', 'Sessionordinaire 2023 - Option Commerciale', 'https://example.com/exams/exetat-com-2023.pdf', 540),
+('Examen Exetat Pédagogie 2022', 'Français', 2022, 'Pédagogie', 'Moyen', 'Session ordinaire 2022 - Option Pédagogie', 'https://example.com/exams/exetat-ped-2022.pdf', 310);
+
+-- =====================================================
 -- SEED DATA: Sample Questions
 -- (Insert these after creating a simulation)
 -- =====================================================
