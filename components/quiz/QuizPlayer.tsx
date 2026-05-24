@@ -34,11 +34,39 @@ export function QuizPlayer({ quiz, questions, onComplete, onQuit }: QuizPlayerPr
   const [isComplete, setIsComplete] = useState(false);
   const [startTime] = useState(Date.now());
 
-  const currentQuestion = questions[currentIndex];
+const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
   const progress = ((currentIndex + 1) / totalQuestions) * 100;
 
+  const handleFinish = useCallback(() => {
+    const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+    let correctCount = 0;
+    let wrongCount = 0;
+
+    questions.forEach((q, idx) => {
+      if (answers[idx] === q.correct_answer) {
+        correctCount++;
+      } else {
+        wrongCount++;
+      }
+    });
+
+    const score = Math.round((correctCount / totalQuestions) * 100);
+    setIsComplete(true);
+
+    // Clear saved progress
+    localStorage.removeItem(`quiz_${quiz.id}_progress`);
+
+    onComplete({
+      score,
+      correct_count: correctCount,
+      wrong_count: wrongCount,
+      time_spent_seconds: timeSpent,
+    });
+  }, [answers, questions, totalQuestions, startTime, onComplete, quiz.id]);
+
   // Timer
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (isComplete || timeLeft <= 0) return;
 
@@ -96,39 +124,12 @@ export function QuizPlayer({ quiz, questions, onComplete, onQuit }: QuizPlayerPr
     }
   };
 
-  const handlePrevious = () => {
+const handlePrevious = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setShowCorrection(false);
     }
   };
-
-  const handleFinish = useCallback(() => {
-    const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-    let correctCount = 0;
-    let wrongCount = 0;
-
-    questions.forEach((q, idx) => {
-      if (answers[idx] === q.correct_answer) {
-        correctCount++;
-      } else {
-        wrongCount++;
-      }
-    });
-
-    const score = Math.round((correctCount / totalQuestions) * 100);
-    setIsComplete(true);
-
-    // Clear saved progress
-    localStorage.removeItem(`quiz_${quiz.id}_progress`);
-
-    onComplete({
-      score,
-      correct_count: correctCount,
-      wrong_count: wrongCount,
-      time_spent_seconds: timeSpent,
-    });
-  }, [answers, questions, totalQuestions, startTime, onComplete, quiz.id]);
 
   const getOptionStyle = (option: AnswerOption) => {
     const isSelected = answers[currentIndex] === option;

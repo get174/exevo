@@ -485,3 +485,38 @@ USING (auth.uid() = user_id);
 CREATE POLICY "Users can manage own goals" 
 ON personal_goals FOR ALL 
 USING (auth.uid() = user_id);
+
+-- =====================================================
+-- TABLE: user_preferences
+-- Stores user settings and preferences
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) UNIQUE,
+    theme TEXT DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
+    language TEXT DEFAULT 'fr' CHECK (language IN ('fr', 'en', 'ln', 'sw')),
+    notifications_enabled BOOLEAN DEFAULT true,
+    email_notifications BOOLEAN DEFAULT true,
+    push_notifications BOOLEAN DEFAULT false,
+    new_exams_notifications BOOLEAN DEFAULT true,
+    new_quiz_notifications BOOLEAN DEFAULT true,
+    results_notifications BOOLEAN DEFAULT true,
+    premium_promo_notifications BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- Users can manage their own preferences
+CREATE POLICY "Users can manage own preferences" 
+ON user_preferences FOR ALL 
+USING (auth.uid() = user_id);

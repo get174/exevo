@@ -33,7 +33,7 @@ const menuItems = [
   { label: 'Classement', href: '/dashboard', icon: Medal },
   { label: 'Téléchargements', href: '/dashboard/exams', icon: FileText },
   { label: 'Profil', href: '/dashboard/profile', icon: UserCircle2 },
-  { label: 'Paramètres', href: '/dashboard/profile', icon: Settings },
+{ label: 'Paramètres', href: '/dashboard/settings', icon: Settings },
 ];
 
 function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {

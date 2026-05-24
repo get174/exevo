@@ -29,7 +29,7 @@ export function ExamSearch({
   useEffect(() => {
     if (!hasChanged) return;
 
-    setIsLoading(true);
+setIsLoading(true);
     const timer = setTimeout(() => {
       onChange(localValue);
       onSearch?.(localValue);

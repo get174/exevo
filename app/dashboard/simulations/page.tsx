@@ -262,7 +262,7 @@ function InstructionsStep({ candidateInfo, onBack, hasReadInstructions, onReadCh
         </ul>
         <label className="mb-6 flex cursor-pointer items-center gap-2">
           <input type="checkbox" checked={hasReadInstructions} onChange={(e) => onReadChange(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
-          <span className="text-sm font-medium">J'ai lu les consignes</span>
+<span className="text-sm font-medium">J&apos;ai lu les consignes</span>
         </label>
         <div className="flex gap-4">
           <Button variant="outline" onClick={onBack} className="flex-1">Retour</Button>

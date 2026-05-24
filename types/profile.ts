@@ -198,3 +198,159 @@ export function getActivityColor(type: ActivityType): string {
       return 'text-slate-500 bg-slate-100 dark:bg-slate-800';
   }
 }
+
+// =====================================================
+// Settings Types
+// =====================================================
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+export type LanguageCode = 'fr' | 'en' | 'ln' | 'sw';
+
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  theme: ThemeMode;
+  language: LanguageCode;
+  notifications_enabled: boolean;
+  email_notifications: boolean;
+  push_notifications: boolean;
+  new_exams_notifications: boolean;
+  new_quiz_notifications: boolean;
+  results_notifications: boolean;
+  premium_promo_notifications: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationSettings {
+  notifications_enabled: boolean;
+  email_notifications: boolean;
+  push_notifications: boolean;
+  new_exams_notifications: boolean;
+  new_quiz_notifications: boolean;
+  results_notifications: boolean;
+  premium_promo_notifications: boolean;
+}
+
+export interface PasswordChangeFormData {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface AccountDeleteFormData {
+  password: string;
+  confirmation: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  device: string;
+  browser: string;
+  last_activity: string;
+  current: boolean;
+}
+
+// Password strength levels
+export type PasswordStrength = 'weak' | 'medium' | 'strong' | 'very_strong';
+
+export function calculatePasswordStrength(password: string): PasswordStrength {
+  if (!password) return 'weak';
+  
+  let score = 0;
+  
+  // Length checks
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  
+  // Character type checks
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+  
+  if (score <= 2) return 'weak';
+  if (score <= 4) return 'medium';
+  if (score <= 5) return 'strong';
+  return 'very_strong';
+}
+
+export function getPasswordStrengthLabel(strength: PasswordStrength): string {
+  switch (strength) {
+    case 'weak':
+      return 'Faible';
+    case 'medium':
+      return 'Moyen';
+    case 'strong':
+      return 'Fort';
+    case 'very_strong':
+      return 'Très fort';
+  }
+}
+
+export function getPasswordStrengthColor(strength: PasswordStrength): string {
+  switch (strength) {
+    case 'weak':
+      return 'bg-red-500';
+    case 'medium':
+      return 'bg-yellow-500';
+    case 'strong':
+      return 'bg-green-500';
+    case 'very_strong':
+      return 'bg-green-600';
+  }
+}
+
+// Sample data for settings
+export const SAMPLE_USER_PREFERENCES: UserPreferences = {
+  id: '1',
+  user_id: '1',
+  theme: 'system',
+  language: 'fr',
+  notifications_enabled: true,
+  email_notifications: true,
+  push_notifications: false,
+  new_exams_notifications: true,
+  new_quiz_notifications: true,
+  results_notifications: true,
+  premium_promo_notifications: true,
+  created_at: '2023-06-15T00:00:00Z',
+  updated_at: '2024-03-15T00:00:00Z',
+};
+
+export const SAMPLE_ACTIVE_SESSIONS: ActiveSession[] = [
+  {
+    id: '1',
+    device: 'Android',
+    browser: 'Chrome',
+    last_activity: 'Il y a 5 minutes',
+    current: true,
+  },
+  {
+    id: '2',
+    device: 'Windows',
+    browser: 'Firefox',
+    last_activity: 'Il y a 2 jours',
+    current: false,
+  },
+  {
+    id: '3',
+    device: 'iPhone',
+    browser: 'Safari',
+    last_activity: 'Il y a 1 semaine',
+    current: false,
+  },
+];
+
+export const THEMES: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Clair' },
+  { value: 'dark', label: 'Sombre' },
+  { value: 'system', label: 'Système automatique' },
+];
+
+export const LANGUAGES: { value: LanguageCode; label: string }[] = [
+  { value: 'fr', label: 'Français' },
+  { value: 'en', label: 'Anglais' },
+  { value: 'ln', label: 'Lingala' },
+  { value: 'sw', label: 'Swahili' },
+];
