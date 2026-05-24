@@ -517,6 +517,168 @@ CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id
 ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Users can manage their own preferences
-CREATE POLICY "Users can manage own preferences" 
-ON user_preferences FOR ALL 
+CREATE POLICY "Users can manage own preferences"
+ON user_preferences FOR ALL
+USING (auth.uid() = user_id);
+
+-- =====================================================
+-- TABLE: leaderboard
+-- Stores user scores for the leaderboard system
+-- =====================================================
+CREATE TABLE IF NOT EXISTS leaderboard (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    score INTEGER DEFAULT 0,
+    province TEXT NOT NULL,
+    school TEXT NOT NULL,
+    option TEXT NOT NULL,
+    level INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- TABLE: badges
+-- Stores available badges
+-- =====================================================
+CREATE TABLE IF NOT EXISTS badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    icon TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- TABLE: user_badges
+-- Stores badges earned by users
+-- =====================================================
+CREATE TABLE IF NOT EXISTS user_badges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    badge_id UUID REFERENCES badges(id),
+    earned_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, badge_id)
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON leaderboard(score DESC);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_province ON leaderboard(province);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_option ON leaderboard(option);
+CREATE INDEX IF NOT EXISTS idx_leaderboard_user ON leaderboard(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
+CREATE INDEX IF NOT EXISTS idx_badges_id ON badges(id);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE leaderboard ENABLE ROW LEVEL SECURITY;
+ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
+
+-- Leaderboard is publicly readable
+CREATE POLICY "Leaderboard is publicly readable"
+ON leaderboard FOR SELECT
+USING (true);
+
+-- Users can manage their own leaderboard entry
+CREATE POLICY "Users can manage own leaderboard"
+ON leaderboard FOR ALL
+USING (auth.uid() = user_id);
+
+-- Badges are publicly readable
+CREATE POLICY "Badges are publicly readable"
+ON badges FOR SELECT
+USING (true);
+
+-- Users can manage their own badges
+CREATE POLICY "Users can manage own badges"
+ON user_badges FOR ALL
+USING (auth.uid() = user_id);
+
+-- =====================================================
+-- SEED DATA: Badges
+-- =====================================================
+INSERT INTO badges (name, description, icon) VALUES
+('Champion Quiz', 'Termine premier sur un quiz', 'trophy'),
+('Série 7 jours', '7 jours de suite sur Exevo', 'flame'),
+('Expert Mathématiques', 'Score parfait en mathématiques', 'book-open'),
+('Top 10 National', 'Rejoins le top 10 national', 'star'),
+('Score parfait', 'Obtiens 100% sur un quiz', 'target'),
+('Premier de la classe', 'Première place dans ta classe', 'crown'),
+('Série 30 jours', '30 jours de suite sur Exevo', 'fire'),
+('Maître Physique', 'Expert en Physique', 'atom'),
+('Maître Chimie', 'Expert en Chimie', 'flask-conical'),
+('Lecteur assidu', 'Complète 50 quiz', 'graduation-cap');
+
+-- =====================================================
+-- TABLE: downloads
+-- Stores user download history
+-- =====================================================
+CREATE TABLE IF NOT EXISTS downloads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
+    downloaded_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, exam_id)
+);
+
+-- =====================================================
+-- TABLE: favorites
+-- Stores user favorite exams
+-- =====================================================
+CREATE TABLE IF NOT EXISTS favorites (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    exam_id UUID REFERENCES exams(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, exam_id)
+);
+
+-- =====================================================
+-- TABLE: activity_logs
+-- Stores user activity history
+-- =====================================================
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    action TEXT NOT NULL CHECK (action IN ('download', 'open', 'quiz_start', 'favorite_add', 'favorite_remove')),
+    reference_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_downloads_user ON downloads(user_id);
+CREATE INDEX IF NOT EXISTS idx_downloads_exam ON downloads(exam_id);
+CREATE INDEX IF NOT EXISTS idx_downloads_date ON downloads(downloaded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_favorites_user ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_exam ON favorites(exam_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user ON activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_date ON activity_logs(created_at DESC);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE downloads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+-- Users can manage their own downloads
+CREATE POLICY "Users can manage own downloads"
+ON downloads FOR ALL
+USING (auth.uid() = user_id);
+
+-- Users can manage their own favorites
+CREATE POLICY "Users can manage own favorites"
+ON favorites FOR ALL
+USING (auth.uid() = user_id);
+
+-- Users can manage their own activity logs
+CREATE POLICY "Users can manage own activity logs"
+ON activity_logs FOR ALL
 USING (auth.uid() = user_id);
