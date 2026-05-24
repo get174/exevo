@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Crown,
   FileText,
@@ -20,6 +22,18 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { supabase } from '@/lib/supabase';
 
 type DashboardSidebarProps = {
   mobileOpen: boolean;
@@ -30,15 +44,42 @@ const menuItems = [
   { label: 'Tableau de bord', href: '/dashboard', icon: Gauge },
   { label: 'Anciens examens', href: '/dashboard/exams', icon: FileText },
   { label: 'Quiz', href: '/dashboard/quiz', icon: ClipboardCheck },
-{ label: 'Simulations', href: '/dashboard/simulations', icon: Trophy },
+  { label: 'Simulations', href: '/dashboard/simulations', icon: Trophy },
   { label: 'Classement', href: '/dashboard/leaderboard', icon: Medal },
   { label: 'Téléchargements', href: '/dashboard/downloads', icon: Download },
   { label: 'Profil', href: '/dashboard/profile', icon: UserCircle2 },
-{ label: 'Paramètres', href: '/dashboard/settings', icon: Settings },
+  { label: 'Paramètres', href: '/dashboard/settings', icon: Settings },
 ];
 
 function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // Sign out from Supabase
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+      }
+
+      toast.success('Déconnexion réussie');
+
+      // Redirect to home page
+      router.push('/');
+      router.refresh();
+
+      // Close sidebar if open
+      onItemClick?.();
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Erreur lors de la déconnexion');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -92,10 +133,36 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           <Crown className="mr-2 h-4 w-4" />
           Passer Premium
         </Button>
-        <Button variant="outline" className="w-full justify-start">
-          <LogOut className="mr-2 h-4 w-4" />
-          Déconnexion
-        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-red-800 dark:hover:bg-red-900/20"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Déconnexion
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Se déconnecter?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Vous serez redirigé vers la page d&apos;accueil. Vous pourrez vous reconnecter à tout moment.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annuler</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

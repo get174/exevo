@@ -59,7 +59,7 @@ export interface ProfileFormData {
   school: string;
   province: string;
   option: string;
-  exam_year: number;
+  exam_year: ExamYear;
 }
 
 // Sample data for demo
