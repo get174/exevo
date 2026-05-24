@@ -29,7 +29,7 @@ const menuItems = [
   { label: 'Tableau de bord', href: '/dashboard', icon: Gauge },
   { label: 'Anciens examens', href: '/dashboard/exams', icon: FileText },
   { label: 'Quiz', href: '/dashboard/quiz', icon: ClipboardCheck },
-  { label: 'Simulations', href: '/dashboard', icon: Trophy },
+{ label: 'Simulations', href: '/dashboard/simulations', icon: Trophy },
   { label: 'Classement', href: '/dashboard', icon: Medal },
   { label: 'Téléchargements', href: '/dashboard/exams', icon: FileText },
   { label: 'Profil', href: '/dashboard/profile', icon: UserCircle2 },
