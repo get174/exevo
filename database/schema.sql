@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS simulations (
 -- Stores exam questions with options
 -- =====================================================
 CREATE TABLE IF NOT EXISTS simulation_questions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id BIGSERIAL PRIMARY KEY,
     simulation_id UUID REFERENCES simulations(id) ON DELETE CASCADE,
     question_number INTEGER NOT NULL,
     question_text TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS simulation_questions (
 CREATE TABLE IF NOT EXISTS simulation_answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     simulation_id UUID REFERENCES simulations(id) ON DELETE CASCADE,
-    question_id UUID REFERENCES simulation_questions(id) ON DELETE CASCADE,
+    question_id BIGINT REFERENCES simulation_questions(id) ON DELETE CASCADE,
     selected_answer TEXT CHECK (selected_answer IN ('A', 'B', 'C', 'D', 'E')),
     answered_at TIMESTAMPTZ DEFAULT now()
 );
@@ -597,6 +597,32 @@ USING (true);
 CREATE POLICY "Users can manage own badges"
 ON user_badges FOR ALL
 USING (auth.uid() = user_id);
+
+-- =====================================================
+-- TRIGGER: Auto-create profile on user signup
+-- =====================================================
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, user_id, full_name, phone, school, province, option, exam_year)
+  VALUES (
+    gen_random_uuid(),
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    COALESCE(NEW.raw_user_meta_data->>'phone', ''),
+    COALESCE(NEW.raw_user_meta_data->>'school', ''),
+    COALESCE(NEW.raw_user_meta_data->>'province', ''),
+    COALESCE(NEW.raw_user_meta_data->>'section', ''),
+    COALESCE(NEW.raw_user_meta_data->>'exam_year', '2026')::INTEGER
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- =====================================================
 -- SEED DATA: Badges
