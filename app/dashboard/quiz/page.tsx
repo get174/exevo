@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 export default function QuizPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
@@ -25,28 +26,34 @@ export default function QuizPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(DEFAULT_PAGINATION.page);
   const [showStats, setShowStats] = useState(false);
-  
+
   const [filters, setFilters] = useState<QuizFilters>(DEFAULT_QUIZ_FILTERS);
   const [searchValue, setSearchValue] = useState('');
-  
+  const [userStats, setUserStats] = useState<{ quizzes_completed: number; average_score: number } | null>(null);
+
   const { toast } = useToast();
 
-  // Sample stats for demo
-  const stats: QuizStats = {
-    totalQuizzesCompleted: 24,
-    averageScore: 72,
-    bestSubject: 'Physique',
-    weakestSubject: 'Chimie',
-    weeklyProgress: [
-      { day: 'Lun', score: 80 },
-      { day: 'Mar', score: 65 },
-      { day: 'Mer', score: 90 },
-      { day: 'Jeu', score: 75 },
-      { day: 'Ven', score: 85 },
-      { day: 'Sam', score: 60 },
-      { day: 'Dim', score: 70 },
-    ],
-  };
+  // Fetch user stats from profile API
+  const fetchUserStats = useCallback(async () => {
+    if (!supabase) return;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        const res = await fetch('/api/profile/stats', {
+          headers: { authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUserStats(data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user stats:', err);
+    }
+  }, []);
+
+  // Fetch quizzes
 
   // Fetch quizzes
   const fetchQuizzes = useCallback(async () => {
@@ -84,7 +91,8 @@ export default function QuizPage() {
   // Initial fetch and refetch on filters/page change
   useEffect(() => {
     fetchQuizzes();
-  }, [fetchQuizzes]);
+    fetchUserStats();
+  }, [fetchQuizzes, fetchUserStats]);
 
   // Handle search
   const handleSearch = (value: string) => {
@@ -156,7 +164,15 @@ export default function QuizPage() {
           exit={{ opacity: 0, height: 0 }}
           className="mb-6"
         >
-          <QuizStatsComponent stats={stats} />
+          <QuizStatsComponent
+            stats={{
+              totalQuizzesCompleted: userStats?.quizzes_completed ?? 0,
+              averageScore: userStats?.average_score ?? 0,
+              bestSubject: '-',
+              weakestSubject: '-',
+              weeklyProgress: [],
+            }}
+          />
         </motion.div>
       )}
 

@@ -65,8 +65,7 @@ const currentQuestion = questions[currentIndex];
     });
   }, [answers, questions, totalQuestions, startTime, onComplete, quiz.id]);
 
-  // Timer
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Timer - handleFinish is stable due to useCallback deps
   useEffect(() => {
     if (isComplete || timeLeft <= 0) return;
 
@@ -82,6 +81,7 @@ const currentQuestion = questions[currentIndex];
     }, 1000);
 
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete, timeLeft]);
 
   // Auto-save progress to localStorage

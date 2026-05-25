@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { SAMPLE_QUESTIONS } from '@/types/quiz';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function GET(
   request: NextRequest,
@@ -9,28 +12,25 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // Use Supabase if configured
-    if (isSupabaseConfigured() && supabase) {
-      const { data: questions, error } = await supabase
-        .from('quiz_questions')
-        .select('*')
-        .eq('quiz_id', id)
-        .order('question_number', { ascending: true });
-
-      if (error) throw error;
-
-      return NextResponse.json({ questions: questions || [] });
+    if (!supabaseUrl || !supabaseServiceKey) {
+      // Fallback to sample data
+      const questions = SAMPLE_QUESTIONS.filter(q => q.quiz_id === id);
+      return NextResponse.json({ questions });
     }
 
-    // Fallback to sample data
-    const questions = SAMPLE_QUESTIONS.filter(q => q.quiz_id === id);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    return NextResponse.json({ questions });
+    const { data: questions, error } = await supabase
+      .from('quiz_questions')
+      .select('*')
+      .eq('quiz_id', id)
+      .order('question_number', { ascending: true });
+
+    if (error) throw error;
+
+    return NextResponse.json({ questions: questions || [] });
   } catch (error) {
     console.error('Error fetching questions:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors du chargement des questions' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erreur lors du chargement des questions' }, { status: 500 });
   }
 }

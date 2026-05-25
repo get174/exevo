@@ -102,14 +102,13 @@ export function QuizCard({ quiz, index = 0 }: QuizCardProps) {
             </div>
 
             {/* Actions */}
-            <div className="mt-auto">
-              <Button 
-                className="w-full bg-exevo-blue text-white hover:bg-exevo-blue/90"
-                onClick={(e) => e.preventDefault()}
-              >
-                <Play className="mr-1.5 h-4 w-4" />
-                Commencer
-              </Button>
+            <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
+              <Link href={`/dashboard/quiz/${quiz.id}`}>
+                <Button className="w-full bg-exevo-blue text-white hover:bg-exevo-blue/90">
+                  <Play className="mr-1.5 h-4 w-4" />
+                  Commencer
+                </Button>
+              </Link>
             </div>
           </div>
         </article>

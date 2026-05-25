@@ -9,6 +9,7 @@ import { QuizPlayer } from '@/components/quiz/QuizPlayer';
 import { QuizResults } from '@/components/quiz/QuizResults';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 
 interface QuizPageProps {
   params: Promise<{ id: string }>;
@@ -79,13 +80,19 @@ export default function QuizPlayPage({ params }: QuizPageProps) {
     time_spent_seconds: number;
   }) => {
     setResults(resultsData);
-    
+
     // Save result to API
-    if (quiz) {
+    if (quiz && supabase) {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+
         await fetch('/api/quiz/results', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             quiz_id: quiz.id,
             ...resultsData,

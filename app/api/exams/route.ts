@@ -1,100 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { SAMPLE_EXAMS, DEFAULT_PAGINATION } from '@/types/exam';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  
-  // Pagination
+
   const page = parseInt(searchParams.get('page') || String(DEFAULT_PAGINATION.page));
   const limit = parseInt(searchParams.get('limit') || String(DEFAULT_PAGINATION.limit));
   const offset = (page - 1) * limit;
 
-  // Filters
   const search = searchParams.get('search') || '';
-  const year = searchParams.get('year');
-  const subject = searchParams.get('subject');
-  const option = searchParams.get('option');
-  const difficulty = searchParams.get('difficulty');
+  const year = searchParams.get('year') || '';
+  const subject = searchParams.get('subject') || '';
+  const option = searchParams.get('option') || '';
+  const difficulty = searchParams.get('difficulty') || '';
 
   try {
-    // Use Supabase if configured
-    if (isSupabaseConfigured() && supabase) {
-      let query = supabase
-        .from('exams')
-        .select('*', { count: 'exact' });
-
-      // Apply filters
-      if (search) {
-        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
-      }
-      if (year) {
-        query = query.eq('year', year);
-      }
-      if (subject) {
-        query = query.eq('subject', subject);
-      }
-      if (option) {
-        query = query.eq('option', option);
-      }
-      if (difficulty) {
-        query = query.eq('difficulty', difficulty);
-      }
-
-      // Order and paginate
-      const { data: exams, error, count } = await query
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      if (error) throw error;
-
-      return NextResponse.json({
-        exams: exams || [],
-        total: count || 0,
-        page,
-        limit,
-        totalPages: Math.ceil((count || 0) / limit),
-      });
+    if (!supabaseUrl || !supabaseServiceKey) {
+      // Fallback to sample data
+      return getDemoResponse(search, year, subject, option, difficulty, offset, limit, page);
     }
 
-    // Fallback to sample data (demo mode)
-    let filteredExams = [...SAMPLE_EXAMS];
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Apply filters to sample data
+    let query = supabase.from('exams').select('*', { count: 'exact' });
+
     if (search) {
-      const searchLower = search.toLowerCase();
-      filteredExams = filteredExams.filter(exam =>
-        exam.title.toLowerCase().includes(searchLower) ||
-        exam.subject.toLowerCase().includes(searchLower) ||
-        exam.description?.toLowerCase().includes(searchLower)
-      );
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
-
     if (year) {
-      filteredExams = filteredExams.filter(exam => exam.year === parseInt(year));
+      query = query.eq('year', year);
     }
-
     if (subject) {
-      filteredExams = filteredExams.filter(exam => exam.subject === subject);
+      query = query.eq('subject', subject);
     }
-
     if (option) {
-      filteredExams = filteredExams.filter(exam => exam.option === option);
+      query = query.eq('option', option);
     }
-
     if (difficulty) {
-      filteredExams = filteredExams.filter(exam => exam.difficulty === difficulty);
+      query = query.eq('difficulty', difficulty);
     }
 
-    const total = filteredExams.length;
-    const paginatedExams = filteredExams.slice(offset, offset + limit);
+    const { data: exams, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
 
     return NextResponse.json({
-      exams: paginatedExams,
-      total,
+      exams: exams || [],
+      total: count || 0,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil((count || 0) / limit),
     });
   } catch (error) {
     console.error('Error fetching exams:', error);
@@ -103,4 +64,44 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+function getDemoResponse(search: string, year: string, subject: string, option: string, difficulty: string, offset: number, limit: number, page: number) {
+  let filteredExams = [...SAMPLE_EXAMS];
+
+  if (search) {
+    const searchLower = search.toLowerCase();
+    filteredExams = filteredExams.filter(exam =>
+      exam.title.toLowerCase().includes(searchLower) ||
+      exam.subject.toLowerCase().includes(searchLower) ||
+      exam.description?.toLowerCase().includes(searchLower)
+    );
+  }
+
+  if (year) {
+    filteredExams = filteredExams.filter(exam => exam.year === parseInt(year));
+  }
+
+  if (subject) {
+    filteredExams = filteredExams.filter(exam => exam.subject === subject);
+  }
+
+  if (option) {
+    filteredExams = filteredExams.filter(exam => exam.option === option);
+  }
+
+  if (difficulty) {
+    filteredExams = filteredExams.filter(exam => exam.difficulty === difficulty);
+  }
+
+  const total = filteredExams.length;
+  const paginatedExams = filteredExams.slice(offset, offset + limit);
+
+  return NextResponse.json({
+    exams: paginatedExams,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 }

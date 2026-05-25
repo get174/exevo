@@ -44,6 +44,7 @@ setIsLoading(true);
     if (value !== localValue) {
       setLocalValue(value);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   const handleClear = () => {
