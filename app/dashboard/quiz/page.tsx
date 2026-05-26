@@ -30,7 +30,7 @@ export default function QuizPage() {
 
   const [filters, setFilters] = useState<QuizFilters>(DEFAULT_QUIZ_FILTERS);
   const [searchValue, setSearchValue] = useState('');
-  const [userStats, setUserStats] = useState<{ quizzes_completed: number; average_score: number; best_subject: string; weakest_subject: string } | null>(null);
+  const [userStats, setUserStats] = useState<{ total_completed: number; average_score: number; best_subject: string | null; weakest_subject: string | null } | null>(null);
   const [completedQuizIds, setCompletedQuizIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
