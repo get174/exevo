@@ -11,6 +11,8 @@ export interface LeaderboardEntry {
   option: string;
   level: number;
   rank?: number;
+  score_change?: number;
+  trend?: 'up' | 'down' | 'same';
   created_at: string;
   updated_at: string;
 }

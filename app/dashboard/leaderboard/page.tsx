@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Medal, RefreshCw } from 'lucide-react';
+import { Medal, RefreshCw, Share2, Trophy, TrendingUp, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -15,93 +15,128 @@ import {
   MyPositionSkeleton,
   Badges,
   BadgesSkeleton,
+  DailyChallenges,
+  DailyChallengesSkeleton,
+  SchoolLeaderboard,
+  SchoolLeaderboardSkeleton,
 } from '@/components/leaderboard';
 
-import {
-  SAMPLE_LEADERBOARD,
-  SAMPLE_BADGES,
-  EARNED_BADGES,
-  SAMPLE_MY_POSITION,
-  DEFAULT_FILTERS,
-  type LeaderboardFilters,
-  type LeaderboardEntry,
-} from '@/types/leaderboard';
+import { DEFAULT_FILTERS, type LeaderboardFilters, type LeaderboardEntry, type MyPosition as MyPositionType, type Badge as BadgeType, type UserBadge } from '@/types/leaderboard';
 
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 export default function LeaderboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [myPosition, setMyPosition] = useState<MyPositionType | null>(null);
   const [filters, setFilters] = useState<LeaderboardFilters>(DEFAULT_FILTERS);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState<'global' | 'province' | 'option'>('global');
+  const [allBadges, setAllBadges] = useState<BadgeType[]>([]);
+  const [earnedBadges, setEarnedBadges] = useState<UserBadge[]>([]);
   const itemsPerPage = 10;
 
-  // Simulate data fetching
+  // Fetch leaderboard data from API
   const fetchLeaderboardData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const params = new URLSearchParams();
+      if (filters.province) params.set('province', filters.province);
+      if (filters.option) params.set('option', filters.option);
+      if (filters.period) params.set('period', filters.period);
+      params.set('limit', '50');
+      params.set('offset', '0');
 
-      // In real app, this would be a Supabase query:
-      // const { data, error } = await supabase
-      //   .from('leaderboard')
-      //   .select(`
-      //     id,
-      //     user_id,
-      //     score,
-      //     province,
-      //     school,
-      //     option,
-      //     level,
-      //     profiles:user_id(full_name, avatar_url)
-      //   `)
-      //   .order('score', { ascending: false })
-      //   .range((page - 1) * itemsPerPage, page * itemsPerPage);
+      const response = await fetch(`/api/leaderboard?${params.toString()}`);
+      const data = await response.json();
 
-      // Filter data based on filters
-      let filteredData = [...SAMPLE_LEADERBOARD];
-
-      if (filters.province) {
-        filteredData = filteredData.filter((entry) => entry.province === filters.province);
-      }
-      if (filters.option) {
-        filteredData = filteredData.filter((entry) => entry.option === filters.option);
-      }
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        filteredData = filteredData.filter(
-          (entry) =>
-            entry.full_name.toLowerCase().includes(searchLower) ||
-            entry.school.toLowerCase().includes(searchLower)
-        );
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      // Apply period filter (in real app, this would be done server-side with date filtering)
-      // For demo, all data is shown
-      void filters.period;
-
-      setLeaderboardData(filteredData);
-      toast.success('Classement mis à jour', {
-        icon: <RefreshCw className="h-4 w-4" />,
-      });
+      setLeaderboardData(data.leaderboard || []);
+      setTotalCount(data.total || data.leaderboard?.length || 0);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
+      setLeaderboardData([]);
+      setTotalCount(0);
       toast.error('Erreur lors du chargement du classement');
     } finally {
       setIsLoading(false);
     }
   }, [filters]);
 
+  // Fetch my position from API
+  const fetchMyPosition = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard', { method: 'PUT' });
+      const data = await response.json();
+
+      if (!data.error && data.rank) {
+        setMyPosition({
+          rank: data.rank,
+          score: data.score,
+          pointsToNextRank: data.pointsToNextRank,
+          nextPlayerName: data.nextPlayerName,
+          provinceRank: data.provinceRank,
+          optionRank: data.optionRank,
+          weeklyProgress: data.weeklyProgress,
+          dailyProgress: data.dailyProgress,
+        });
+      } else {
+        setMyPosition(null);
+      }
+    } catch (error) {
+      console.error('Error fetching my position:', error);
+      setMyPosition(null);
+    }
+  }, []);
+
+  // Fetch badges from API
+  const fetchBadges = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard/badges');
+      const data = await response.json();
+
+      if (!data.error) {
+        setAllBadges(data.allBadges || []);
+        setEarnedBadges(data.earnedBadges || []);
+      }
+    } catch (error) {
+      console.error('Error fetching badges:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeaderboardData();
-  }, [fetchLeaderboardData]);
+    fetchMyPosition();
+    fetchBadges();
+  }, [fetchLeaderboardData, fetchMyPosition, fetchBadges]);
+
+  // Client-side filtering for search
+  const filteredData = useMemo(() => {
+    let data = [...leaderboardData];
+
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      data = data.filter(
+        (entry) =>
+          entry.full_name?.toLowerCase().includes(searchLower) ||
+          entry.school?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return data;
+  }, [leaderboardData, filters.search]);
 
   // Get top 3 for podium
-  const topThree = leaderboardData.slice(0, 3);
+  const topThree = filteredData.slice(0, 3);
 
   // Get remaining entries for table (from rank 4)
-  const tableEntries = leaderboardData.slice(3);
+  const tableEntries = filteredData.slice(3);
 
   // Pagination for table entries
   const totalTableEntries = tableEntries.length;
@@ -120,6 +155,25 @@ export default function LeaderboardPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Share functionality
+  const handleShare = async () => {
+    const shareText = `Je suis classé(e) #${myPosition?.rank || '?'} sur Exevo ! 🎯\n\nRejoins-moi sur exevo.app pour améliorer ton classement!`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Mon classement Exevo',
+          text: shareText,
+        });
+      } catch (err) {
+        // User cancelled or error
+      }
+    } else {
+      await navigator.clipboard.writeText(shareText);
+      toast.success('Classement copié dans le presse-papier !');
+    }
   };
 
   return (
@@ -146,6 +200,39 @@ export default function LeaderboardPage() {
           >
             Compare tes performances avec d&apos;autres élèves.
           </motion.p>
+
+          {/* View Mode Toggle */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="flex flex-wrap gap-2 mt-4"
+          >
+            <Button
+              size="sm"
+              variant={viewMode === 'global' ? 'secondary' : 'outline'}
+              onClick={() => setViewMode('global')}
+              className={`text-xs ${viewMode === 'global' ? 'bg-white text-exevo-blue' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+            >
+              Global
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'province' ? 'secondary' : 'outline'}
+              onClick={() => setViewMode('province')}
+              className={`text-xs ${viewMode === 'province' ? 'bg-white text-exevo-blue' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+            >
+              Par Province
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'option' ? 'secondary' : 'outline'}
+              onClick={() => setViewMode('option')}
+              className={`text-xs ${viewMode === 'option' ? 'bg-white text-exevo-blue' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}
+            >
+              Par Option
+            </Button>
+          </motion.div>
         </div>
       </div>
 
@@ -164,17 +251,70 @@ export default function LeaderboardPage() {
           />
         </motion.div>
 
-        {/* My Position Card */}
+        {/* My Position Card with Share */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
+          className="flex gap-4"
         >
-          {isLoading ? (
-            <MyPositionSkeleton />
-          ) : (
-            <MyPosition data={SAMPLE_MY_POSITION} />
-          )}
+          <div className="flex-1">
+            {isLoading ? (
+              <MyPositionSkeleton />
+            ) : myPosition ? (
+              <MyPosition data={myPosition} />
+            ) : (
+              <MyPosition
+                data={{
+                  rank: totalCount + 1,
+                  score: 0,
+                  pointsToNextRank: 0,
+                  nextPlayerName: null,
+                  provinceRank: 1,
+                  optionRank: 1,
+                  weeklyProgress: 0,
+                  dailyProgress: 0,
+                }}
+              />
+            )}
+          </div>
+
+          {/* Share Button */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+            className="hidden sm:flex flex-col gap-2"
+          >
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              className="h-full px-4 rounded-xl border-exevo-orange/30 hover:bg-exevo-orange/10"
+            >
+              <Share2 className="h-4 w-4 mr-2 text-exevo-orange" />
+              <span className="text-exevo-orange font-medium">Partager</span>
+            </Button>
+
+            {/* Quick Stats */}
+            <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+              <Badge variant="outline" className="text-xs">
+                {totalCount} participants
+              </Badge>
+              <div className="flex items-center gap-1 text-xs text-slate-500">
+                <TrendingUp className="h-3 w-3 text-green-500" />
+                <span>+{myPosition?.weeklyProgress || 0} cette semaine</span>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Daily Challenges Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.35 }}
+        >
+          <DailyChallengesSkeleton />
         </motion.div>
 
         {/* Podium Section */}
@@ -184,8 +324,11 @@ export default function LeaderboardPage() {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <div className="rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 overflow-hidden">
-            <div className="bg-gradient-to-r from-exevo-blue to-exevo-blue/90 px-6 py-4">
+            <div className="bg-gradient-to-r from-exevo-blue to-exevo-blue/90 px-6 py-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Top 3 Podium</h2>
+              <Badge className="bg-white/20 text-white border-0">
+                {viewMode === 'global' ? 'Classement Global' : viewMode === 'province' ? `Top ${filters.province || 'Province'}` : `Top ${filters.option || 'Option'}`}
+              </Badge>
             </div>
             <div className="py-4">
               {isLoading ? (
@@ -201,6 +344,19 @@ export default function LeaderboardPage() {
           </div>
         </motion.div>
 
+        {/* School Leaderboard Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45 }}
+        >
+          {isLoading ? (
+            <SchoolLeaderboardSkeleton />
+          ) : (
+            <SchoolLeaderboard entries={leaderboardData} />
+          )}
+        </motion.div>
+
         {/* Full Leaderboard Table */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -208,9 +364,22 @@ export default function LeaderboardPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <div className="space-y-4">
-            <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-              Classement Complet
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">
+                Classement Complet
+              </h2>
+              <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <Trophy className="h-3 w-3 text-yellow-500" /> Top 10
+                </span>
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-green-500" /> En hausse
+                </span>
+                <span className="flex items-center gap-1">
+                  <TrendingDown className="h-3 w-3 text-red-500" /> En baisse
+                </span>
+              </div>
+            </div>
             {isLoading ? (
               <LeaderboardTable entries={[]} isLoading />
             ) : entriesWithRank.length > 0 ? (
@@ -266,7 +435,7 @@ export default function LeaderboardPage() {
           {isLoading ? (
             <BadgesSkeleton />
           ) : (
-            <Badges earnedBadges={EARNED_BADGES} allBadges={SAMPLE_BADGES} />
+            <Badges earnedBadges={earnedBadges} allBadges={allBadges} />
           )}
         </motion.div>
       </div>
