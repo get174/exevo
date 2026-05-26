@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, X, ChevronLeft, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
-import { QuizQuestion, AnswerOption, getResultMessage } from '@/types/quiz';
+import { Clock, X, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { QuizQuestion, AnswerOption } from '@/types/quiz';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 interface QuizPlayerProps {
@@ -33,6 +34,8 @@ export function QuizPlayer({ quiz, questions, onComplete, onQuit }: QuizPlayerPr
   const [timeLeft, setTimeLeft] = useState(quiz.duration_minutes * 60);
   const [isComplete, setIsComplete] = useState(false);
   const [startTime] = useState(Date.now());
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
 const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
@@ -65,14 +68,14 @@ const currentQuestion = questions[currentIndex];
     });
   }, [answers, questions, totalQuestions, startTime, onComplete, quiz.id]);
 
-  // Timer - handleFinish is stable due to useCallback deps
+  // Timer
   useEffect(() => {
     if (isComplete || timeLeft <= 0) return;
 
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timer);
+          if (timerRef.current) clearInterval(timerRef.current);
           handleFinish();
           return 0;
         }
@@ -80,9 +83,10 @@ const currentQuestion = questions[currentIndex];
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isComplete, timeLeft]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isComplete, timeLeft, handleFinish]);
 
   // Auto-save progress to localStorage
   useEffect(() => {
@@ -160,7 +164,7 @@ const handlePrevious = () => {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onQuit}>
+          <Button variant="ghost" size="icon" onClick={() => setShowQuitDialog(true)}>
             <X className="h-5 w-5" />
           </Button>
           <div>
@@ -291,15 +295,43 @@ const handlePrevious = () => {
         <Button
           onClick={handleNext}
           disabled={!answers[currentIndex] && !showCorrection}
-          className="bg-exevo-blue hover:bg-exevo-blue/90"
+          className="min-w-[100px] bg-exevo-blue hover:bg-exevo-blue/90 text-white"
         >
-          {showCorrection 
-            ? (currentIndex === totalQuestions - 1 ? 'Terminer' : 'Suivant') 
+          {showCorrection
+            ? (currentIndex === totalQuestions - 1 ? 'Terminer' : 'Suivant')
             : 'Vérifier'
           }
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
+
+      {/* Quit Confirmation Dialog */}
+      <AlertDialog open={showQuitDialog} onOpenChange={setShowQuitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-exevo-orange" />
+              Quitter le quiz ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tu as répondu à {Object.keys(answers).length} question(s) sur {totalQuestions}.
+              Ton progrès ne sera pas sauvegardé si tu quittes maintenant.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuer le quiz</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                localStorage.removeItem(`quiz_${quiz.id}_progress`);
+                onQuit();
+              }}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Quitter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

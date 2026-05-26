@@ -15,6 +15,7 @@ interface QuizListProps {
   limit?: number;
   onPageChange?: (page: number) => void;
   className?: string;
+  completedQuizIds?: Set<string>;
 }
 
 export function QuizList({
@@ -25,6 +26,7 @@ export function QuizList({
   limit = DEFAULT_PAGINATION.limit,
   onPageChange,
   className,
+  completedQuizIds,
 }: QuizListProps) {
   const totalPages = Math.ceil(total / limit);
   const hasQuizzes = quizzes.length > 0;
@@ -46,6 +48,7 @@ export function QuizList({
               key={quiz.id}
               quiz={quiz}
               index={index}
+              isCompleted={completedQuizIds?.has(quiz.id)}
             />
           ))
         ) : null}

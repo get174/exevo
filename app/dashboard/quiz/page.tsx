@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart3, History } from 'lucide-react';
-import { 
-  Quiz, 
-  QuizFilters, 
-  DEFAULT_QUIZ_FILTERS, 
+import {
+  Quiz,
+  QuizFilters,
+  DEFAULT_QUIZ_FILTERS,
   DEFAULT_PAGINATION,
-  QuizStats
+  QuizStats,
+  QuizHistoryResponse
 } from '@/types/quiz';
 import { QuizSearch } from '@/components/quiz/QuizSearch';
 import { QuizFilters as QuizFiltersComponent } from '@/components/quiz/QuizFilters';
@@ -29,31 +30,33 @@ export default function QuizPage() {
 
   const [filters, setFilters] = useState<QuizFilters>(DEFAULT_QUIZ_FILTERS);
   const [searchValue, setSearchValue] = useState('');
-  const [userStats, setUserStats] = useState<{ quizzes_completed: number; average_score: number } | null>(null);
+  const [userStats, setUserStats] = useState<{ quizzes_completed: number; average_score: number; best_subject: string; weakest_subject: string } | null>(null);
+  const [completedQuizIds, setCompletedQuizIds] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
 
-  // Fetch user stats from profile API
+  // Fetch user stats from quiz history API
   const fetchUserStats = useCallback(async () => {
     if (!supabase) return;
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session?.access_token) {
-        const res = await fetch('/api/profile/stats', {
+        const res = await fetch('/api/quiz/history', {
           headers: { authorization: `Bearer ${session.access_token}` },
         });
         if (res.ok) {
-          const data = await res.json();
-          setUserStats(data);
+          const data: QuizHistoryResponse = await res.json();
+          setUserStats(data.stats);
+          // Track completed quiz IDs for visual indicators
+          const ids = new Set(data.history.map((h: any) => h.quiz_id));
+          setCompletedQuizIds(ids);
         }
       }
     } catch (err) {
       console.error('Error fetching user stats:', err);
     }
   }, []);
-
-  // Fetch quizzes
 
   // Fetch quizzes
   const fetchQuizzes = useCallback(async () => {
@@ -166,10 +169,10 @@ export default function QuizPage() {
         >
           <QuizStatsComponent
             stats={{
-              totalQuizzesCompleted: userStats?.quizzes_completed ?? 0,
+              totalQuizzesCompleted: userStats?.total_completed ?? 0,
               averageScore: userStats?.average_score ?? 0,
-              bestSubject: '-',
-              weakestSubject: '-',
+              bestSubject: userStats?.best_subject ?? '-',
+              weakestSubject: userStats?.weakest_subject ?? '-',
               weeklyProgress: [],
             }}
           />
@@ -219,6 +222,7 @@ export default function QuizPage() {
             page={page}
             limit={DEFAULT_PAGINATION.limit}
             onPageChange={handlePageChange}
+            completedQuizIds={completedQuizIds}
           />
         </main>
       </div>

@@ -1,12 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { 
-  Clock, 
-  HelpCircle, 
+import {
+  Clock,
+  HelpCircle,
   TrendingUp,
   Play,
-  BarChart3
+  BarChart3,
+  CheckCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { Quiz } from '@/types/quiz';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 interface QuizCardProps {
   quiz: Quiz;
   index?: number;
+  isCompleted?: boolean;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -34,7 +36,7 @@ const subjectColors: Record<string, string> = {
   'Géographie': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
 };
 
-export function QuizCard({ quiz, index = 0 }: QuizCardProps) {
+export function QuizCard({ quiz, index = 0, isCompleted }: QuizCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -43,11 +45,18 @@ export function QuizCard({ quiz, index = 0 }: QuizCardProps) {
     >
       <Link href={`/dashboard/quiz/${quiz.id}`}>
         <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-slate-900/50">
+          {/* Completed indicator */}
+          {isCompleted && (
+            <div className="absolute right-2 top-2 z-10">
+              <CheckCircle className="h-6 w-6 text-green-500" />
+            </div>
+          )}
+
           {/* Header with gradient */}
           <div className="relative overflow-hidden bg-gradient-to-br from-exevo-blue to-slate-800 p-4 text-white">
             <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-white/10 transition-transform group-hover:scale-150" />
             <div className="absolute -bottom-2 -left-2 h-12 w-12 rounded-full bg-white/5" />
-            
+
             {/* Badges */}
             <div className="relative flex flex-wrap gap-1.5">
               <Badge className={cn('text-xs font-medium', subjectColors[quiz.subject] || 'bg-slate-100 text-slate-700')}>
@@ -104,9 +113,14 @@ export function QuizCard({ quiz, index = 0 }: QuizCardProps) {
             {/* Actions */}
             <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
               <Link href={`/dashboard/quiz/${quiz.id}`}>
-                <Button className="w-full bg-exevo-blue text-white hover:bg-exevo-blue/90">
+                <Button className={cn(
+                  'w-full',
+                  isCompleted
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'bg-exevo-blue hover:bg-exevo-blue/90 text-white'
+                )}>
                   <Play className="mr-1.5 h-4 w-4" />
-                  Commencer
+                  {isCompleted ? 'Reprendre' : 'Commencer'}
                 </Button>
               </Link>
             </div>

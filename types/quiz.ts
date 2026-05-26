@@ -385,6 +385,34 @@ export interface QuizStats {
   weeklyProgress: { day: string; score: number }[];
 }
 
+// Quiz history entry
+export interface QuizHistoryEntry {
+  id: string;
+  quiz_id: string;
+  score: number;
+  correct_count: number;
+  wrong_count: number;
+  time_spent_seconds: number;
+  created_at: string;
+  quiz: {
+    id: string;
+    title: string;
+    subject: string;
+    option: string;
+    difficulty: string;
+  };
+}
+
+export interface QuizHistoryResponse {
+  history: QuizHistoryEntry[];
+  stats: {
+    total_completed: number;
+    average_score: number;
+    best_subject: string | null;
+    weakest_subject: string | null;
+  };
+}
+
 // Result message helpers
 export function getResultMessage(score: number): {
   emoji: string;
