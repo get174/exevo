@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface ExamDetailPageProps {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 const difficultyColors = {
@@ -78,7 +78,7 @@ function ExamDetailSkeleton() {
 }
 
 export default function ExamDetailPage({ params }: ExamDetailPageProps) {
-  const { id } = use(params);
+  const { id } = params;
   const router = useRouter();
   const { toast } = useToast();
   

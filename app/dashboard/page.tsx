@@ -15,61 +15,160 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
-const stats = [
-  {
-    label: 'Examens disponibles',
-    value: '10 240',
-    progress: 78,
-    icon: BookOpen,
-  },
-  {
-    label: 'Quiz complétés',
-    value: '128',
-    progress: 62,
-    icon: ClipboardCheck,
-  },
-  {
-    label: 'Score moyen',
-    value: '84%',
-    progress: 84,
-    icon: TrendingUp,
-  },
-  {
-    label: 'Classement national',
-    value: '#42',
-    progress: 68,
-    icon: Trophy,
-  },
-];
+interface Exam {
+  id: string;
+  title: string;
+  subject: string;
+  year: number;
+  option: string;
+  difficulty: string;
+  downloads_count: number;
+}
 
-const recentRevisions = [
-  { subject: 'Mathématiques', year: '2023', progress: 70 },
-  { subject: 'Physique', year: '2022', progress: 45 },
-  { subject: 'Chimie', year: '2021', progress: 58 },
-];
+interface SubjectProgress {
+  id: string;
+  user_id: string;
+  subject: string;
+  progress: number;
+  updated_at: string;
+}
 
-const popularExams = [
-  { title: 'Mathématiques', year: '2023', downloads: 3200, difficulty: 'Moyen' },
-  { title: 'Physique', year: '2022', downloads: 2850, difficulty: 'Difficile' },
-  { title: 'Chimie', year: '2021', downloads: 2410, difficulty: 'Moyen' },
-  { title: 'Français', year: '2020', downloads: 1980, difficulty: 'Facile' },
-];
+interface LeaderboardEntry {
+  id: string;
+  user_id: string;
+  score: number;
+  province: string;
+  school: string;
+  option: string;
+  profiles?: { full_name: string };
+}
 
-const leaderboard = [
-  { name: 'Amina Kabeya', province: 'Kinshasa', score: 96, rank: '🥇' },
-  { name: 'Joel Mutombo', province: 'Haut-Katanga', score: 93, rank: '🥈' },
-  { name: 'Sarah Banza', province: 'Nord-Kivu', score: 91, rank: '🥉' },
-  { name: 'Grâce Mbayo', province: 'Kongo Central', score: 89, rank: '4' },
-];
+interface DashboardData {
+  stats: {
+    examsCount: number;
+    quizzesCompleted: number;
+    averageScore: number;
+    userPosition: number;
+  };
+  leaderboard: LeaderboardEntry[];
+  popularExams: Exam[];
+  recentRevisions: SubjectProgress[];
+}
+
+const statsIcons = [BookOpen, ClipboardCheck, TrendingUp, Trophy];
+const statsLabels = ['Examens disponibles', 'Quiz complétés', 'Score moyen', 'Classement national'];
 
 export default function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      let token: string | undefined;
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        token = session?.access_token;
+      }
+
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/api/dashboard', { headers });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Impossible de charger les données');
+      toast.error('Erreur lors du chargement du dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="rounded-2xl border-0 shadow-md">
+              <CardContent className="p-4">
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-60" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-slate-500">{error || 'Aucune donnée disponible'}</p>
+      </div>
+    );
+  }
+
+  const statsValues = [
+    { value: data.stats.examsCount.toLocaleString(), progress: 78 },
+    { value: data.stats.quizzesCompleted.toString(), progress: 62 },
+    { value: `${data.stats.averageScore}%`, progress: data.stats.averageScore },
+    { value: `#${data.stats.userPosition || '—'}`, progress: 68 },
+  ];
+
+  const leaderboardRanks = ['🥇', '🥈', '🥉', '4'];
+
   return (
     <div className="space-y-6">
+      {/* Stats Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((item, idx) => (
+        {statsValues.map((item, idx) => (
           <motion.div
-            key={item.label}
+            key={statsLabels[idx]}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.06 }}
@@ -78,12 +177,14 @@ export default function DashboardPage() {
               <CardContent className="p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="rounded-xl bg-exevo-blue/10 p-2 text-exevo-blue dark:bg-exevo-orange/10 dark:text-exevo-orange">
-                    <item.icon className="h-4 w-4" />
+                    {(() => {
+                      const Icon = statsIcons[idx];
+                      return <Icon className="h-4 w-4" />;
+                    })()}
                   </div>
-                  <span className="text-xs font-medium text-slate-500">+12%</span>
                 </div>
                 <p className="text-2xl font-black">{item.value}</p>
-                <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">{item.label}</p>
+                <p className="mb-2 text-sm text-slate-600 dark:text-slate-300">{statsLabels[idx]}</p>
                 <Progress value={item.progress} className="h-2" />
               </CardContent>
             </Card>
@@ -92,92 +193,142 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
+        {/* Continue Revision */}
         <Card className="rounded-2xl border-0 shadow-md shadow-slate-200/60 lg:col-span-2 dark:bg-slate-900 dark:shadow-none">
           <CardHeader>
             <CardTitle>Continuer la révision</CardTitle>
             <CardDescription>Reprends là où tu t&apos;es arrêté.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentRevisions.map((item) => (
-              <div
-                key={`${item.subject}-${item.year}`}
-                className="rounded-xl border border-slate-200 p-4 dark:border-slate-700"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{item.subject}</p>
-                    <p className="text-xs text-slate-500">Exetat {item.year}</p>
+            {data.recentRevisions && data.recentRevisions.length > 0 ? (
+              data.recentRevisions.slice(0, 3).map((revision) => (
+                <Link
+                  key={revision.id}
+                  href={`/dashboard/quiz?subject=${encodeURIComponent(revision.subject)}`}
+                >
+                  <div className="group cursor-pointer rounded-xl border border-slate-200 p-4 transition-all hover:border-exevo-blue hover:shadow-md dark:border-slate-700 dark:hover:border-exevo-orange">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold group-hover:text-exevo-blue dark:group-hover:text-exevo-orange">
+                          {revision.subject}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="bg-exevo-blue text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-slate-800 dark:bg-exevo-orange dark:hover:bg-exevo-light-orange"
+                      >
+                        Continuer
+                      </Button>
+                    </div>
+                    <Progress value={revision.progress} className="h-2" />
                   </div>
-                  <Button size="sm" className="bg-exevo-blue text-white hover:bg-slate-800">
-                    Continuer
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-700">
+                <p className="text-sm text-slate-500">Aucune progression récente</p>
+                <Link href="/dashboard/quiz">
+                  <Button size="sm" className="mt-2 bg-exevo-blue text-white hover:bg-slate-800">
+                    Commencer un quiz
                   </Button>
-                </div>
-                <Progress value={item.progress} className="h-2" />
+                </Link>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
+        {/* Leaderboard */}
         <Card className="rounded-2xl border-0 shadow-md shadow-slate-200/60 dark:bg-slate-900 dark:shadow-none">
           <CardHeader>
             <CardTitle>Classement</CardTitle>
             <CardDescription>Top élèves cette semaine</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {leaderboard.map((student) => (
-              <div key={student.name} className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800">
-                <Avatar className="h-9 w-9">
-                  <AvatarFallback className="bg-exevo-blue text-white">
-                    {student.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{student.name}</p>
-                  <p className="text-xs text-slate-500">{student.province}</p>
+            {data.leaderboard && data.leaderboard.length > 0 ? (
+              data.leaderboard.slice(0, 4).map((student, idx) => (
+                <div
+                  key={student.id}
+                  className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800"
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-exevo-blue text-white">
+                      {(student.profiles?.full_name || 'U')
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {student.profiles?.full_name || 'Utilisateur'}
+                    </p>
+                    <p className="text-xs text-slate-500">{student.province}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold">{leaderboardRanks[idx]}</p>
+                    <p className="text-xs text-slate-500">{student.score}%</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold">{student.rank}</p>
-                  <p className="text-xs text-slate-500">{student.score}%</p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center text-sm text-slate-500">
+                <p>Aucun classement disponible</p>
               </div>
-            ))}
+            )}
+            <Link
+              href="/dashboard/leaderboard"
+              className="block text-center text-sm font-medium text-exevo-blue hover:underline"
+            >
+              Voir tout le classement
+            </Link>
           </CardContent>
         </Card>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
+        {/* Popular Exams */}
         <Card className="rounded-2xl border-0 shadow-md shadow-slate-200/60 lg:col-span-2 dark:bg-slate-900 dark:shadow-none">
           <CardHeader>
             <CardTitle>Examens populaires</CardTitle>
             <CardDescription>Les plus téléchargés par les élèves Exevo.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            {popularExams.map((exam) => (
-              <div
-                key={`${exam.title}-${exam.year}`}
-                className="rounded-xl border border-slate-200 p-4 dark:border-slate-700"
-              >
-                <p className="font-semibold">
-                  {exam.title} {exam.year}
-                </p>
-                <div className="mt-2 space-y-1 text-xs text-slate-500">
-                  <p className="inline-flex items-center gap-1">
-                    <Download className="h-3.5 w-3.5" /> {exam.downloads} téléchargements
-                  </p>
-                  <p>Difficulté : {exam.difficulty}</p>
-                </div>
-                <Button size="sm" className="mt-3 bg-exevo-orange text-white hover:bg-exevo-light-orange">
-                  Ouvrir
-                </Button>
+            {data.popularExams && data.popularExams.length > 0 ? (
+              data.popularExams.map((exam) => (
+                <Link
+                  key={exam.id}
+                  href={`/dashboard/exams/${exam.id}`}
+                >
+                  <div className="group cursor-pointer rounded-xl border border-slate-200 p-4 transition-all hover:border-exevo-blue hover:shadow-md dark:border-slate-700">
+                    <p className="font-semibold group-hover:text-exevo-blue">
+                      {exam.subject} {exam.year}
+                    </p>
+                    <div className="mt-2 space-y-1 text-xs text-slate-500">
+                      <p className="inline-flex items-center gap-1">
+                        <Download className="h-3.5 w-3.5" />{' '}
+                        {exam.downloads_count?.toLocaleString() || 0} téléchargements
+                      </p>
+                      <p>Difficulté : {exam.difficulty}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="mt-3 bg-exevo-orange text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-exevo-light-orange"
+                    >
+                      Ouvrir
+                    </Button>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-2 text-center text-sm text-slate-500">
+                <p>Aucun examen disponible</p>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 
+        {/* Premium CTA */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
