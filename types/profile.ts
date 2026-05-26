@@ -151,7 +151,6 @@ export const PROVINCES = [
   'Maniema',
   'Kasaï',
   'Kwilu',
-  'Kwilu',
   'Bas-Uele',
   'Mongala',
   'Tshuapa',

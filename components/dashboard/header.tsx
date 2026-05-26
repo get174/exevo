@@ -1,11 +1,12 @@
 'use client';
 
-import { Bell, Menu, Moon, Search, Sun } from 'lucide-react';
+import { Bell, Menu, Moon, Search, Sun, Loader2 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/lib/supabase';
 
 type DashboardHeaderProps = {
   onOpenMobileMenu: () => void;
@@ -14,9 +15,41 @@ type DashboardHeaderProps = {
 export function DashboardHeader({ onOpenMobileMenu }: DashboardHeaderProps) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [profile, setProfile] = useState<{ full_name: string } | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+
+    async function fetchProfile() {
+      if (!supabase) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setIsLoadingProfile(false);
+          return;
+        }
+
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    fetchProfile();
   }, []);
 
   const isDark = resolvedTheme === 'dark';
@@ -60,13 +93,29 @@ export function DashboardHeader({ onOpenMobileMenu }: DashboardHeaderProps) {
             </Button>
 
             <Avatar className="h-9 w-9 border border-slate-200 dark:border-slate-700">
-              <AvatarFallback className="bg-exevo-blue text-white">GM</AvatarFallback>
+              <AvatarFallback className="bg-exevo-blue text-white">
+                {isLoadingProfile ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : profile?.full_name ? (
+                  profile.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                ) : (
+                  'GM'
+                )}
+              </AvatarFallback>
             </Avatar>
           </div>
         </div>
 
         <div>
-          <p className="text-base font-black text-exevo-blue dark:text-white sm:text-lg">Bonjour Grâce 👋</p>
+          {isLoadingProfile ? (
+            <div className="space-y-1">
+              <div className="h-5 w-32 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          ) : (
+            <p className="text-base font-black text-exevo-blue dark:text-white sm:text-lg">
+              Bonjour {profile?.full_name?.split(' ')[0] || 'Invité'} 👋
+            </p>
+          )}
           <p className="text-sm text-slate-600 dark:text-slate-300">Prêt pour réussir ton Exetat ?</p>
         </div>
       </div>

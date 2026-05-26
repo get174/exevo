@@ -74,22 +74,17 @@ export function useProfile() {
         console.log('Session error:', sessionError);
       }
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('User:', user, 'Error:', userError);
+      // Use session directly - avoids CORS issues from direct getUser() calls
+      const accessToken = session?.access_token;
+      const userId = session?.user?.id;
 
-      if (userError || !user) {
-        if (!session?.access_token) {
-          console.log('No session - user not logged in');
-          setError('Non connecté');
-          setLoading(false);
-          return;
-        }
-        console.log('Using session access token');
-        var accessToken = session.access_token;
-      } else {
-        const { data: { session: session2 } } = await supabase.auth.getSession();
-        var accessToken = session2?.access_token || user.id;
+      if (!accessToken || !userId) {
+        console.log('No session - user not logged in');
+        setError('Non connecté');
+        setLoading(false);
+        return;
       }
+      console.log('Using session access token');
 
       console.log('Access token available:', !!accessToken);
 
@@ -111,7 +106,7 @@ export function useProfile() {
       const profileData = profileRes.ok ? await profileRes.json() : null;
 
       // If profile not found (404), try to create it
-      if (!profileData && profileRes.status === 404 && user) {
+      if (!profileData && profileRes.status === 404 && userId) {
         const createRes = await fetch(`${baseUrl}/api/profile`, {
           method: 'POST',
           headers: {
@@ -119,14 +114,14 @@ export function useProfile() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            user_id: user.id,
-            full_name: user.user_metadata?.full_name || 'Utilisateur',
-            phone: user.user_metadata?.phone || '',
-            email: user.email || '',
-            school: user.user_metadata?.school || '',
-            province: user.user_metadata?.province || '',
-            option: user.user_metadata?.section || '',
-            exam_year: parseInt(user.user_metadata?.exam_year || '2026'),
+            user_id: userId,
+            full_name: session?.user?.user_metadata?.full_name || 'Utilisateur',
+            phone: session?.user?.user_metadata?.phone || '',
+            email: session?.user?.email || '',
+            school: session?.user?.user_metadata?.school || '',
+            province: session?.user?.user_metadata?.province || '',
+            option: session?.user?.user_metadata?.section || '',
+            exam_year: parseInt(session?.user?.user_metadata?.exam_year || '2026'),
           }),
         });
         const newProfile = createRes.ok ? await createRes.json() : null;

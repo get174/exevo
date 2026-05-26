@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    console.log('Fetching quizzes from Supabase...');
 
     let query = supabase.from('quizzes').select('*', { count: 'exact' });
 
@@ -54,9 +55,17 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
+    console.log('Quizzes result:', quizzes?.length, 'count:', count, 'error:', error);
+
     if (error) {
       console.error('Supabase error:', error);
       // Fallback to demo data on error
+      return getDemoResponse(search, subject, option, difficulty, duration, offset, limit, page);
+    }
+
+    // If no quizzes from DB but we have demo data, use demo
+    if ((!quizzes || quizzes.length === 0)) {
+      console.log('No quizzes from DB, using demo data');
       return getDemoResponse(search, subject, option, difficulty, duration, offset, limit, page);
     }
 

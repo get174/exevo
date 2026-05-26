@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,6 +18,7 @@ import {
   X,
   GraduationCap,
   Download,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,40 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [profile, setProfile] = useState<{ full_name: string; option: string } | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      if (!supabase) {
+        setIsLoadingProfile(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          setIsLoadingProfile(false);
+          return;
+        }
+
+        const res = await fetch('/api/profile', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    fetchProfile();
+  }, []);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -95,11 +130,30 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
       <div className="border-b border-slate-200 p-4 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <Avatar className="h-11 w-11 border border-slate-200 dark:border-slate-700">
-            <AvatarFallback className="bg-exevo-blue text-white">GM</AvatarFallback>
+            <AvatarFallback className="bg-exevo-blue text-white">
+              {isLoadingProfile ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : profile?.full_name ? (
+                profile.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+              ) : (
+                'GM'
+              )}
+            </AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-bold">Grâce Mbayo</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Option Scientifique</p>
+            {isLoadingProfile ? (
+              <div className="space-y-1">
+                <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-3 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold">{profile?.full_name || 'Utilisateur'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {profile?.option || 'Exetat 2026'}
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>

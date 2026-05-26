@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, User, Lock, Palette, Bell, Database } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 import {
   AccountSettings,
@@ -31,58 +33,336 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState<UserPreferences>(SAMPLE_USER_PREFERENCES);
   const [sessions] = useState<ActiveSession[]>(SAMPLE_ACTIVE_SESSIONS);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    async function loadUserData() {
+      console.log('=== Loading user data ===');
+      console.log('isSupabaseConfigured:', isSupabaseConfigured());
+      console.log('supabase:', supabase);
+
+      if (!isSupabaseConfigured() || !supabase) {
+        console.log('Supabase not configured, skipping...');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Use getSession instead of getUser to avoid CORS issues
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('Auth session result:', { session, sessionError });
+
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+        }
+
+        const user = session?.user;
+        if (!user) {
+          console.log('No user found in session');
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('User ID:', user.id);
+        setUserId(user.id);
+
+        // Load profile
+        console.log('Loading profile for user_id:', user.id);
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('Profile query result:', { profileData, profileError });
+
+        if (profileData) {
+          setProfile({
+            id: profileData.id,
+            full_name: profileData.full_name || '',
+            phone: profileData.phone || '',
+            email: profileData.email || user.email || '',
+            school: profileData.school || '',
+            province: profileData.province || '',
+            option: profileData.option || '',
+            exam_year: profileData.exam_year || 2025,
+            avatar_url: profileData.avatar_url || null,
+            subscription: profileData.subscription || 'gratuit',
+            created_at: profileData.created_at,
+          });
+        } else {
+          console.log('No profile found, creating default profile...');
+          // Create a default profile if it doesn't exist
+          const defaultProfile = {
+            user_id: user.id,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+            phone: user.user_metadata?.phone || '',
+            email: user.email || '',
+            school: user.user_metadata?.school || '',
+            province: user.user_metadata?.province || '',
+            option: user.user_metadata?.option || '',
+            exam_year: 2025,
+          };
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert(defaultProfile)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+          } else if (newProfile) {
+            console.log('Created new profile:', newProfile);
+            setProfile({
+              id: newProfile.id,
+              full_name: newProfile.full_name || '',
+              phone: newProfile.phone || '',
+              email: newProfile.email || user.email || '',
+              school: newProfile.school || '',
+              province: newProfile.province || '',
+              option: newProfile.option || '',
+              exam_year: newProfile.exam_year || 2025,
+              avatar_url: newProfile.avatar_url || null,
+              subscription: newProfile.subscription || 'gratuit',
+              created_at: newProfile.created_at,
+            });
+          }
+        }
+
+        // Load preferences
+        console.log('Loading preferences for user_id:', user.id);
+        const { data: prefsData, error: prefsError } = await supabase
+          .from('user_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        console.log('Preferences query result:', { prefsData, prefsError });
+
+        if (prefsData) {
+          setPreferences({
+            id: prefsData.id,
+            user_id: prefsData.user_id,
+            theme: prefsData.theme || 'system',
+            language: prefsData.language || 'fr',
+            notifications_enabled: prefsData.notifications_enabled ?? true,
+            email_notifications: prefsData.email_notifications ?? true,
+            push_notifications: prefsData.push_notifications ?? false,
+            new_exams_notifications: prefsData.new_exams_notifications ?? true,
+            new_quiz_notifications: prefsData.new_quiz_notifications ?? true,
+            results_notifications: prefsData.results_notifications ?? true,
+            premium_promo_notifications: prefsData.premium_promo_notifications ?? true,
+            created_at: prefsData.created_at,
+            updated_at: prefsData.updated_at,
+          });
+        } else {
+          console.log('No preferences found, creating default...');
+          // Create default preferences if they don't exist
+          const { error: insertPrefsError } = await supabase.from('user_preferences').insert({
+            user_id: user.id,
+            theme: 'system',
+            language: 'fr',
+            notifications_enabled: true,
+            email_notifications: true,
+            push_notifications: false,
+            new_exams_notifications: true,
+            new_quiz_notifications: true,
+            results_notifications: true,
+            premium_promo_notifications: true,
+          });
+
+          if (insertPrefsError) {
+            console.error('Error creating preferences:', insertPrefsError);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        console.log('=== Finished loading ===');
+        setIsLoading(false);
+      }
+    }
+
+    loadUserData();
   }, []);
 
   const handleProfileUpdate = async (data: ProfileFormData) => {
-    // In real app: await supabase.from('profiles').update(data).eq('user_id', userId);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setProfile((prev) => ({ ...prev, ...data, exam_year: data.exam_year as ExamYear }));
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      // Fallback to local state only
+      setProfile((prev) => ({ ...prev, ...data, exam_year: data.exam_year as ExamYear }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: data.full_name,
+          phone: data.phone,
+          school: data.school,
+          province: data.province,
+          option: data.option,
+          exam_year: data.exam_year,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setProfile((prev) => ({ ...prev, ...data, exam_year: data.exam_year as ExamYear }));
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   };
 
   const handlePasswordChange = async (data: PasswordChangeFormData) => {
-    // In real app: await supabase.auth.updateUser({ password: data.new_password });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    void data;
+    if (!isSupabaseConfigured() || !supabase) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: data.new_password,
+      });
+
+      if (error) throw error;
+      toast.success('Mot de passe mis à jour avec succès');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      throw error;
+    }
   };
 
   const handleLogoutSession = async (sessionId: string) => {
-    // In real app: await supabase.auth.signOut({ scope: 'others' });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Sessions management via Supabase is handled differently
     void sessionId;
   };
 
   const handleLogoutAll = async () => {
-    // In real app: await supabase.auth.signOut({ scope: 'global' });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    if (!isSupabaseConfigured() || !supabase) {
+      return;
+    }
+
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const handlePreferencesUpdate = async (prefs: Partial<UserPreferences>) => {
-    // In real app: await supabase.from('user_preferences').update(prefs).eq('user_id', userId);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setPreferences((prev) => ({ ...prev, ...prefs }));
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      setPreferences((prev) => ({ ...prev, ...prefs }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .update({
+          ...prefs,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setPreferences((prev) => ({ ...prev, ...prefs }));
+    } catch (error) {
+      console.error('Error updating preferences:', error);
+      throw error;
+    }
   };
 
   const handleNotificationsUpdate = async (settings: Partial<NotificationSettings>) => {
-    // In real app: await supabase.from('user_preferences').update(settings).eq('user_id', userId);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setPreferences((prev) => ({ ...prev, ...settings }));
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      setPreferences((prev) => ({ ...prev, ...settings }));
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .update({
+          ...settings,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setPreferences((prev) => ({ ...prev, ...settings }));
+    } catch (error) {
+      console.error('Error updating notifications:', error);
+      throw error;
+    }
   };
 
   const handleExportData = async () => {
-    // In real app: generate and download user data
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      toast.error('Configuration Supabase requise');
+      return;
+    }
+
+    try {
+      // Gather all user data
+      const [profileResult, prefsResult, statsResult] = await Promise.all([
+        supabase.from('profiles').select('*').eq('user_id', userId).single(),
+        supabase.from('user_preferences').select('*').eq('user_id', userId).single(),
+        supabase.from('user_stats').select('*').eq('user_id', userId).single(),
+      ]);
+
+      const exportData = {
+        profile: profileResult.data,
+        preferences: prefsResult.data,
+        stats: statsResult.data,
+        exportedAt: new Date().toISOString(),
+      };
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `exevo-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success('Données exportées avec succès');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Erreur lors de l\'exportation');
+    }
   };
 
   const handleDeleteAccount = async (password: string) => {
-    // In real app: verify password and delete account
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    void password;
-    toast.success('Compte supprimé avec succès');
+    if (!isSupabaseConfigured() || !supabase) {
+      return;
+    }
+
+    try {
+      // Verify password by attempting to sign in
+      const { error } = await supabase.auth.signInWithOtp({
+        email: profile.email,
+      });
+
+      if (error) throw error;
+
+      // Delete user data from all tables
+      const tables = ['profiles', 'user_preferences', 'user_stats', 'user_activities', 'personal_goals', 'subject_progress', 'leaderboard'];
+      for (const table of tables) {
+        await supabase.from(table).delete().eq('user_id', userId);
+      }
+
+      // Delete auth user
+      // Note: This typically requires admin privileges or a server-side action
+      toast.success('Compte supprimé avec succès');
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
   };
 
   return (

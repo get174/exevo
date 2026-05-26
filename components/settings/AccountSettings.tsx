@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,6 +46,25 @@ export function AccountSettings({ profile, isLoading, onSave }: AccountSettingsP
       exam_year: profile.exam_year,
     },
   });
+
+  // Update form default values when profile changes (after loading from database)
+  useEffect(() => {
+    console.log('=== AccountSettings Props ===');
+    console.log('profile:', profile);
+    console.log('isLoading:', isLoading);
+
+    if (!isLoading) {
+      form.reset({
+        full_name: profile.full_name,
+        phone: profile.phone,
+        email: profile.email,
+        school: profile.school,
+        province: profile.province,
+        option: profile.option,
+        exam_year: profile.exam_year,
+      });
+    }
+  }, [profile, isLoading, form]);
 
   const handleSubmit = async (data: ProfileFormData) => {
     try {

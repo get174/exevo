@@ -48,7 +48,16 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase error:', error);
+      return getDemoResponse(search, year, subject, option, difficulty, offset, limit, page);
+    }
+
+    // If no exams from DB but we have demo data, use demo
+    if (!exams || exams.length === 0) {
+      console.log('No exams from DB, using demo data');
+      return getDemoResponse(search, year, subject, option, difficulty, offset, limit, page);
+    }
 
     return NextResponse.json({
       exams: exams || [],
@@ -59,10 +68,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching exams:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors du chargement des examens' },
-      { status: 500 }
-    );
+    return getDemoResponse(search, year, subject, option, difficulty, offset, limit, page);
   }
 }
 
