@@ -109,19 +109,31 @@ export function ExamCard({ exam, onFavorite, index = 0 }: ExamCardProps) {
 
             {/* Actions */}
             <div className="mt-auto flex gap-2">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="flex-1 bg-exevo-blue text-white hover:bg-exevo-blue/90"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Navigate to exam detail
+                  window.location.href = `/dashboard/exams/${exam.id}`;
+                }}
               >
                 <Play className="mr-1.5 h-3.5 w-3.5" />
                 Ouvrir
               </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
+              <Button
+                size="sm"
+                variant="outline"
                 className="px-3"
-                onClick={(e) => e.preventDefault()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Download PDF
+                  if (exam.pdf_url) {
+                    window.open(exam.pdf_url, '_blank');
+                  }
+                }}
               >
                 <Download className="h-4 w-4" />
               </Button>
