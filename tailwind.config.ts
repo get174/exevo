@@ -60,7 +60,7 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Exevo custom colors
+        // ExetatApp custom colors
         'exevo-blue': '#0F172A',
         'exevo-orange': '#F97316',
         'exevo-light-orange': '#FB923C',

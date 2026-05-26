@@ -207,7 +207,7 @@ export default function RegisterPage() {
       return;
     }
 
-    setWelcomeMessage('Bienvenue sur Exevo 🎓 Commence dès maintenant ta préparation à l’Exetat.');
+    setWelcomeMessage("Bienvenue sur ExetatApp 🎓 Commence dès maintenant ta préparation à l’Exetat.");
     setTimeout(() => {
       router.push('/dashboard');
     }, 1400);
@@ -228,7 +228,7 @@ export default function RegisterPage() {
                 <GraduationCap className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-xl font-black sm:text-2xl">Créer mon compte Exevo</CardTitle>
+                <CardTitle className="text-xl font-black sm:text-2xl">Créer mon compte ExetatApp</CardTitle>
                 <CardDescription className="text-slate-200">
                   Plateforme éducative moderne pour réussir l&apos;Exetat
                 </CardDescription>

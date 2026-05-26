@@ -291,7 +291,7 @@ export default function DashboardPage() {
         <Card className="rounded-2xl border-0 shadow-md shadow-slate-200/60 lg:col-span-2 dark:bg-slate-900 dark:shadow-none">
           <CardHeader>
             <CardTitle>Examens populaires</CardTitle>
-            <CardDescription>Les plus téléchargés par les élèves Exevo.</CardDescription>
+            <CardDescription>Les plus téléchargés par les élèves ExetatApp.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
             {data.popularExams && data.popularExams.length > 0 ? (

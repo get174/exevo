@@ -18,7 +18,7 @@ export function ExevoCTA() {
           Commence ta préparation dès aujourd’hui.
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-sm text-orange-50 md:text-base">
-          Rejoins Exevo et progresse avec les meilleurs contenus de révision Exetat en RDC.
+          Rejoins ExetatApp et progresse avec les meilleurs contenus de révision Exetat en RDC.
         </p>
         <Button
           size="lg"

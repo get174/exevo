@@ -308,7 +308,7 @@ function ActivitySection() {
       <Card className="rounded-2xl border-0 shadow-md shadow-slate-200/60 dark:bg-slate-900 dark:shadow-none">
         <CardHeader>
           <CardTitle className="text-lg font-black">Activité récente</CardTitle>
-          <CardDescription>Tes dernières actions sur Exevo</CardDescription>
+          <CardDescription>Tes dernières actions sur ExetatApp</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (

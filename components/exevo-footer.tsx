@@ -6,9 +6,9 @@ export function ExevoFooter() {
     <footer id="contact" className="border-t bg-slate-50/80 px-4 py-12 md:px-6 dark:bg-slate-950/80">
       <div className="mx-auto grid w-full max-w-7xl gap-10 md:grid-cols-4">
         <div className="space-y-3 md:col-span-2">
-          <h3 className="text-2xl font-black text-exevo-blue dark:text-white">Exevo</h3>
+          <h3 className="text-2xl font-black text-exevo-blue dark:text-white">ExetatApp</h3>
           <p className="max-w-md text-sm text-slate-600 dark:text-slate-300">
-            Exevo est une plateforme éducative congolaise moderne dédiée à la préparation intelligente
+            ExetatApp est une plateforme éducative congolaise moderne dédiée à la préparation intelligente
             à l’Exetat en République Démocratique du Congo.
           </p>
           <div className="flex items-center gap-3 text-slate-500 dark:text-slate-300">
@@ -69,7 +69,7 @@ export function ExevoFooter() {
         </div>
       </div>
       <div className="mx-auto mt-8 w-full max-w-7xl border-t pt-4 text-center text-xs text-slate-500 dark:text-slate-400">
-        © {new Date().getFullYear()} Exevo. Tous droits réservés.
+        © {new Date().getFullYear()} ExetatApp. Tous droits réservés.
       </div>
     </footer>
   );

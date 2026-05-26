@@ -40,7 +40,7 @@ export function ExevoNavbar() {
             <GraduationCap className="h-5 w-5" />
           </div>
           <span className="text-lg font-extrabold tracking-tight text-exevo-blue dark:text-white">
-            Exevo
+            ExetatApp
           </span>
         </Link>
 

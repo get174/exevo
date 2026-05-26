@@ -123,7 +123,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           <div className="rounded-lg bg-exevo-orange p-2 text-white shadow-lg shadow-orange-500/30">
             <GraduationCap className="h-5 w-5" />
           </div>
-          <span className="text-xl font-black text-exevo-blue dark:text-white">Exevo</span>
+          <span className="text-xl font-black text-exevo-blue dark:text-white">ExetatApp</span>
         </Link>
       </div>
 

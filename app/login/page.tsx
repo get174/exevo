@@ -58,7 +58,7 @@ export default function LoginPage() {
         <Card className="border-0 shadow-2xl shadow-slate-300/40 dark:bg-slate-900 dark:shadow-none">
           <CardHeader className="space-y-2 text-center">
             <CardTitle className="text-2xl font-black text-exevo-blue dark:text-white">Connexion</CardTitle>
-            <CardDescription>Accède à ton espace Exevo</CardDescription>
+            <CardDescription>Accède à ton espace ExetatApp</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={onSubmit}>

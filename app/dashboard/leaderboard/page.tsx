@@ -159,12 +159,12 @@ export default function LeaderboardPage() {
 
   // Share functionality
   const handleShare = async () => {
-    const shareText = `Je suis classé(e) #${myPosition?.rank || '?'} sur Exevo ! 🎯\n\nRejoins-moi sur exevo.app pour améliorer ton classement!`;
+    const shareText = `Je suis classé(e) #${myPosition?.rank || '?'} sur ExetatApp ! 🎯\n\nRejoins-moi sur exetatapp.app pour améliorer ton classement!`;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Mon classement Exevo',
+          title: 'Mon classement ExetatApp',
           text: shareText,
         });
       } catch (err) {
