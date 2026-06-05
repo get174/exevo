@@ -708,3 +708,41 @@ USING (auth.uid() = user_id);
 CREATE POLICY "Users can manage own activity logs"
 ON activity_logs FOR ALL
 USING (auth.uid() = user_id);
+
+-- =====================================================
+-- TABLE: payment_sessions
+-- Stores premium payment transactions
+-- =====================================================
+CREATE TABLE IF NOT EXISTS payment_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    plan_id TEXT NOT NULL,
+    amount INTEGER NOT NULL,
+    payment_method TEXT CHECK (payment_method IN ('airtel_money', 'mpesa', 'orange_rdc', 'credit_card')) NOT NULL,
+    phone_number TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    completed_at TIMESTAMPTZ
+);
+
+-- =====================================================
+-- INDEXES FOR PERFORMANCE
+-- =====================================================
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_user ON payment_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_status ON payment_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_created ON payment_sessions(created_at DESC);
+
+-- =====================================================
+-- ROW LEVEL SECURITY (RLS)
+-- =====================================================
+ALTER TABLE payment_sessions ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own payment sessions
+CREATE POLICY "Users can view own payment sessions"
+ON payment_sessions FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Users can insert their own payment sessions
+CREATE POLICY "Users can insert own payment sessions"
+ON payment_sessions FOR INSERT
+WITH CHECK (auth.uid() = user_id);

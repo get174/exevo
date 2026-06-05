@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, User, Lock, Palette, Bell, Database } from 'lucide-react';
+import { Settings as SettingsIcon, User, Lock, Palette, Bell, Database, Crown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -13,6 +13,7 @@ import {
   PreferencesSettings,
   NotificationsSettings,
   DataPrivacy,
+  PremiumSettings,
 } from '@/components/settings';
 
 import {
@@ -365,6 +366,33 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpgradeSubscription = async (planId: string) => {
+    if (!isSupabaseConfigured() || !supabase || !userId) {
+      setProfile((prev) => ({ ...prev, subscription: 'premium' }));
+      toast.success('Abonnement Premium activé !');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          subscription: 'premium',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setProfile((prev) => ({ ...prev, subscription: 'premium' }));
+      toast.success('Abonnement Premium activé avec succès !');
+    } catch (error) {
+      console.error('Error upgrading subscription:', error);
+      toast.error('Erreur lors de l\'activation du Premium');
+      throw error;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
@@ -394,6 +422,25 @@ export default function SettingsPage() {
 
       {/* Content */}
       <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-4xl mx-auto">
+        {/* Premium Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Crown className="h-5 w-5 text-exevo-orange" />
+            <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">
+              Premium
+            </h2>
+          </div>
+          <PremiumSettings
+            profile={profile}
+            isLoading={isLoading}
+            onUpgrade={handleUpgradeSubscription}
+          />
+        </motion.div>
+
         {/* Account Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -353,3 +353,140 @@ export const LANGUAGES: { value: LanguageCode; label: string }[] = [
   { value: 'ln', label: 'Lingala' },
   { value: 'sw', label: 'Swahili' },
 ];
+
+// =====================================================
+// Premium Subscription Types
+// =====================================================
+
+export type PaymentMethod = 'airtel_money' | 'mpesa' | 'orange_rdc' | 'credit_card';
+
+export interface PremiumPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  priceDisplay: string;
+  duration: string;
+  durationDays: number;
+  features: string[];
+  popular?: boolean;
+}
+
+export interface PaymentFormData {
+  paymentMethod: PaymentMethod;
+  phoneNumber: string;
+  amount: number;
+  planId: string;
+}
+
+export interface PaymentSession {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  phone_number: string;
+  status: 'pending' | 'completed' | 'failed';
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface PremiumBenefits {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+// Premium plans
+export const PREMIUM_PLANS: PremiumPlan[] = [
+  {
+    id: 'monthly',
+    name: 'Premium Mensuel',
+    description: 'Accès Premium pour 1 mois',
+    price: 2500,
+    priceDisplay: '2 500 CDF / mois',
+    duration: '1 mois',
+    durationDays: 30,
+    features: [
+      'Accès illimité aux examens',
+      'Accès illimité aux quiz',
+      'Simulations illimitées',
+      'Corrigés détaillés',
+      'Suivi de progression avancé',
+      'Badges exclusifs',
+    ],
+  },
+  {
+    id: 'quarterly',
+    name: 'Premium Trimestriel',
+    description: 'Accès Premium pour 3 mois',
+    price: 6000,
+    priceDisplay: '6 000 CDF / 3 mois',
+    duration: '3 mois',
+    durationDays: 90,
+    popular: true,
+    features: [
+      'Tous les avantages Premium Mensuel',
+      'Économie de 20%',
+      'Support prioritaire',
+      'Accès anticipé aux nouvelles fonctionnalités',
+      'Coaching personnalisé',
+    ],
+  },
+  {
+    id: 'yearly',
+    name: 'Premium Annuel',
+    description: 'Accès Premium pour 1 an',
+    price: 20000,
+    priceDisplay: '20 000 CDF / an',
+    duration: '1 an',
+    durationDays: 365,
+    features: [
+      'Tous les avantages Premium Trimestriel',
+      'Économie de 33%',
+      'Garantie satisfait ou remboursé',
+      'Accès à vie aux mises à jour',
+      'Préparations spéciales Exetat',
+    ],
+  },
+];
+
+export const PREMIUM_BENEFITS: PremiumBenefits[] = [
+  {
+    icon: '📚',
+    title: 'Examens Illimités',
+    description: 'Téléchargez et réviser tous les examens passés sans limite',
+  },
+  {
+    icon: '🧩',
+    title: 'Quiz Illimités',
+    description: 'Accédez à des centaines de quiz interactifs',
+  },
+  {
+    icon: '📝',
+    title: 'Simulations Réelles',
+    description: 'Entraînez-vous avec des conditions d\'examen réelles',
+  },
+  {
+    icon: '✅',
+    title: 'Corrigés Détaillés',
+    description: 'Voyez vos erreurs avec des explications complètes',
+  },
+  {
+    icon: '🏆',
+    title: 'Badges Exclusifs',
+    description: 'Gagnez des badges spéciaux pour vos réussites',
+  },
+  {
+    icon: '📊',
+    title: 'Suivi Avanzato',
+    description: 'Visualisez votre progression en détail',
+  },
+];
+
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: string }[] = [
+  { value: 'airtel_money', label: 'Airtel Money', icon: '📱' },
+  { value: 'mpesa', label: 'M-Pesa', icon: '📱' },
+  { value: 'orange_rdc', label: 'Orange RDC', icon: '📱' },
+  { value: 'credit_card', label: 'Carte Bancaire', icon: '💳' },
+];

@@ -19,6 +19,7 @@ import {
   GraduationCap,
   Download,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { SimplePremiumDialog } from '@/components/settings/SimplePremiumDialog';
 import { supabase } from '@/lib/supabase';
 
 type DashboardSidebarProps = {
@@ -56,8 +58,10 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [profile, setProfile] = useState<{ full_name: string; option: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; option: string; subscription?: string } | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -90,6 +94,50 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
     fetchProfile();
   }, []);
+
+  const isPremium = profile?.subscription === 'premium';
+
+  const handleUpgrade = async (planId: string) => {
+    if (!supabase) {
+      setProfile((prev) => prev ? { ...prev, subscription: 'premium' } : null);
+      toast.success('Abonnement Premium activé !');
+      return;
+    }
+
+    setIsUpgrading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('Non autorisé');
+        return;
+      }
+
+      const res = await fetch('/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Erreur lors du paiement');
+      }
+
+      setProfile((prev) => prev ? { ...prev, subscription: 'premium' } : null);
+      toast.success('Bienvenue Premium !');
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast.error('Erreur lors de l\'activation du Premium');
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    setShowPaymentDialog(false);
+  };
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -183,10 +231,34 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
       </nav>
 
       <div className="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
-        <Button className="w-full bg-exevo-orange text-white hover:bg-exevo-light-orange">
-          <Crown className="mr-2 h-4 w-4" />
-          Passer Premium
-        </Button>
+        {isPremium ? (
+          <div className="rounded-xl bg-gradient-to-br from-exevo-orange/10 to-exevo-orange/5 border border-exevo-orange/20 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-exevo-orange" />
+              <span className="text-sm font-bold text-exevo-orange">Premium Actif</span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Vous avez accès à toutes les fonctionnalités Premium
+            </p>
+          </div>
+        ) : (
+          <>
+            <Button
+              onClick={() => setShowPaymentDialog(true)}
+              className="w-full bg-exevo-orange text-white hover:bg-exevo-light-orange"
+            >
+              <Crown className="mr-2 h-4 w-4" />
+              Passer Premium
+            </Button>
+
+            <SimplePremiumDialog
+              open={showPaymentDialog}
+              onOpenChange={setShowPaymentDialog}
+              onPaymentSuccess={handlePaymentSuccess}
+              isLoading={isUpgrading}
+            />
+          </>
+        )}
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
