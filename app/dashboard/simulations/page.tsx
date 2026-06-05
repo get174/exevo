@@ -22,6 +22,7 @@ import {
   DRC_PROVINCES,
   EXETAT_OPTIONS,
 } from '@/types/simulation';
+import { supabase } from '@/lib/supabase';
 
 type Step = 'identification' | 'instructions' | 'exam' | 'results';
 
@@ -32,6 +33,8 @@ export default function SimulationPage() {
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const [answers, setAnswers] = useState<Record<number, AnswerOption>>({});
   const [hasReadInstructions, setHasReadInstructions] = useState(false);
+  const [simulationId, setSimulationId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const startTimeRef = useRef<number>(0);
 
   const totalTime = DEFAULT_EXAM_CONFIG.totalTimeMinutes * 60;
@@ -47,13 +50,73 @@ export default function SimulationPage() {
     finishExam();
   }
 
-  const finishExam = useCallback(() => {
+  const finishExam = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase!.auth.getSession();
+
+      if (session?.access_token && simulationId) {
+        const timeUsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+
+        // Calculate results
+        let correctCount = 0;
+        let wrongCount = 0;
+        let blankCount = 0;
+
+        questions.forEach((q) => {
+          const answer = answers[q.questionNumber];
+          if (!answer) {
+            blankCount++;
+          } else if (answer === q.correctAnswer) {
+            correctCount++;
+          } else {
+            wrongCount++;
+          }
+        });
+
+        const score = (correctCount / questions.length) * 100;
+
+        // Save results
+        await fetch('/api/simulations/results', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            simulationId,
+            score,
+            correctCount,
+            wrongCount,
+            blankCount,
+            timeUsedSeconds: timeUsed,
+          }),
+        });
+
+        // Update simulation status to completed
+        await fetch('/api/simulations', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            id: simulationId,
+            status: 'completed',
+            ended_at: new Date().toISOString(),
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Error saving results:', error);
+    }
+    setIsLoading(false);
     setStep('results');
-  }, []);
+  }, [simulationId, questions, answers]);
 
   useEffect(() => {
     if (step !== 'exam') return;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       autosave.saveState({
         candidateInfo: candidateInfo!,
         currentQuestion,
@@ -61,19 +124,80 @@ export default function SimulationPage() {
         timeRemaining: timer.remainingSeconds,
         lastSaved: Date.now(),
       });
+
+      // Autosave answers to database
+      if (simulationId) {
+        const { data: { session } } = await supabase!.auth.getSession();
+        if (session?.access_token) {
+          const answersArray = Object.entries(answers).map(([num, ans]) => ({
+            question_id: parseInt(num),
+            selected_answer: ans,
+          }));
+
+          await fetch('/api/simulations', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              id: simulationId,
+              status: 'in_progress',
+              answers: answersArray,
+            }),
+          });
+        }
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, [step, autosave, candidateInfo, currentQuestion, answers, timer.remainingSeconds]);
+  }, [step, autosave, candidateInfo, currentQuestion, answers, timer.remainingSeconds, simulationId]);
 
-  const handleStartExam = () => {
+  const handleStartExam = async () => {
     if (!candidateInfo || !hasReadInstructions) return;
+
+    setIsLoading(true);
+    let newSimulationId: string | null = null;
+
+    try {
+      const { data: { session } } = await supabase!.auth.getSession();
+
+      if (session?.access_token) {
+        // Create simulation in database
+        const response = await fetch('/api/simulations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            candidate_name: candidateInfo.name,
+            candidate_firstname: candidateInfo.firstname,
+            candidate_code: candidateInfo.code,
+            sex: candidateInfo.sex,
+            option: candidateInfo.option,
+            province: candidateInfo.province,
+            school: candidateInfo.school,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.id) {
+          newSimulationId = data.id;
+          setSimulationId(data.id);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating simulation:', error);
+    }
+
     const examQuestions: SimulationQuestion[] = SAMPLE_QUESTIONS.map((q, i) => ({
       ...q,
       id: `q-${i + 1}`,
-      simulationId: 'demo',
+      simulationId: newSimulationId || 'demo',
     }));
     setQuestions(examQuestions);
     startTimeRef.current = Date.now();
+    setIsLoading(false);
     setStep('exam');
   };
 
@@ -95,6 +219,7 @@ export default function SimulationPage() {
     setAnswers({});
     setCurrentQuestion(1);
     setHasReadInstructions(false);
+    setSimulationId(null);
     timer.reset();
   };
 
